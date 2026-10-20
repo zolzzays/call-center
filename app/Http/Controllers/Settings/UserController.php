@@ -87,7 +87,7 @@ class UserController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:50', 'regex:/^[A-Za-z0-9_.-]+$/', Rule::unique('users', 'username')->ignore($user)],
+            'username' => ['required', 'string', 'max:50', 'regex:/^[A-Za-z\p{Cyrillic}0-9_.-]+$/u', Rule::unique('users', 'username')->ignore($user)],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
             'role_id' => ['required', 'exists:roles,id'],
             'department_id' => ['nullable', 'exists:departments,id'],
@@ -101,7 +101,7 @@ class UserController extends Controller
             'name.required' => 'Нэрийг оруулна уу.',
             'username.required' => 'Нэвтрэх нэрийг оруулна уу.',
             'username.unique' => 'Ийм нэвтрэх нэр бүртгэлтэй байна.',
-            'username.regex' => 'Нэвтрэх нэр зөвхөн латин үсэг, тоо, _ . - агуулна.',
+            'username.regex' => 'Нэвтрэх нэр зөвхөн латин, кирилл үсэг, тоо, _ . - агуулна.',
             'email.email' => 'И-мэйл хаяг буруу байна.',
             'email.unique' => 'Ийм и-мэйл бүртгэлтэй байна.',
             'role_id.required' => 'Эрхийн түвшинг сонгоно уу.',

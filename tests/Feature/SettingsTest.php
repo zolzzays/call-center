@@ -86,6 +86,35 @@ class SettingsTest extends TestCase
             ->assertRedirect(route('dashboard'));
     }
 
+    public function test_username_may_contain_cyrillic_letters(): void
+    {
+        $this->actingAs($this->admin())->post('/settings/users', [
+            'name' => 'Өлзий',
+            'username' => 'өлзий.бат01',
+            'role_id' => Role::where('slug', Role::USER)->value('id'),
+            'is_active' => '1',
+            'password' => 'secret123',
+            'password_confirmation' => 'secret123',
+        ])->assertSessionHasNoErrors()->assertRedirect('/settings/users');
+
+        $this->assertDatabaseHas('users', ['username' => 'өлзий.бат01']);
+
+        auth()->logout();
+        $this->post('/login', ['username' => 'өлзий.бат01', 'password' => 'secret123'])
+            ->assertRedirect(route('dashboard'));
+    }
+
+    public function test_username_rejects_spaces_and_symbols(): void
+    {
+        $this->actingAs($this->admin())->post('/settings/users', [
+            'name' => 'Бат',
+            'username' => 'бат болд!',
+            'role_id' => Role::where('slug', Role::USER)->value('id'),
+            'password' => 'secret123',
+            'password_confirmation' => 'secret123',
+        ])->assertSessionHasErrors('username');
+    }
+
     public function test_user_position_must_belong_to_selected_department(): void
     {
         $admin = $this->admin();
