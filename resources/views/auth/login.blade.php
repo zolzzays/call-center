@@ -9,13 +9,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap">
 <style>
-body{margin:0;background:#06173D}
-a{color:#4C9BFF}a:hover{color:#8CC0FF}
-.inp::placeholder{color:#8FA6D4}
+body{margin:0;background:#FFFFFF}
+a{color:#1A73FF}a:hover{color:#0B5ED7}
+.inp::placeholder{color:#94A3B8}
 .inp:focus{outline:none;border-color:#3D8BFF;box-shadow:0 0 0 3px rgba(61,139,255,.25)}
 .inp.is-invalid{border-color:#FF6B6B}
-button:focus-visible,a:focus-visible{outline:3px solid #8CC0FF;outline-offset:2px}
-.alert{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:8px;font-size:14px;line-height:1.5;color:#FFD5D5;background:rgba(255,90,90,.12);border:1px solid rgba(255,107,107,.45)}
+button:focus-visible,a:focus-visible{outline:3px solid #1A73FF;outline-offset:2px}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:8px;font-size:14px;line-height:1.5;color:#B91C1C;background:#FEF2F2;border:1px solid #FECACA}
 .alert svg{flex-shrink:0;margin-top:2px}
 .brand-logo{width:84%;height:84%;object-fit:contain}
 .brand-icon{color:#1A73FF;display:flex}
@@ -86,7 +86,7 @@ button:focus-visible,a:focus-visible{outline:3px solid #8CC0FF;outline-offset:2p
 }
 @media (max-width:980px){
 .wrap{flex-direction:column !important;flex-wrap:nowrap !important}
-.panel{order:-1;flex:none !important;border-left:0 !important;border-bottom:1px solid rgba(140,175,240,.14);padding:24px 20px 32px !important}
+.panel{order:-1;flex:none !important;border-left:0 !important;border-bottom:1px solid #E2E8F0;padding:24px 20px 32px !important}
 .login{margin:8px 0 !important}
 .hero{flex:none !important;padding:40px 32px 36px !important}
 .illo{max-width:620px !important;margin:0 auto}
@@ -98,8 +98,8 @@ button:focus-visible,a:focus-visible{outline:3px solid #8CC0FF;outline-offset:2p
 
 .logo-box{width:54px !important;height:54px !important}
 .brand-name{font-size:19px !important}
-.eyebrow{font-size:11px !important;letter-spacing:.14em !important}
-.headline{font-size:32px !important}
+.brand-en{font-size:13px !important}
+.headline{font-size:24px !important}
 .lead{font-size:16px !important}
 .feats{flex-direction:column !important;align-items:flex-start !important;gap:12px !important;font-size:15px !important}
 .feats svg{width:30px;height:30px}
@@ -109,25 +109,24 @@ button:focus-visible,a:focus-visible{outline:3px solid #8CC0FF;outline-offset:2p
 </style>
 </head>
 <body>
-<div class="wrap" style="min-height: 100vh; display: flex; flex-wrap: wrap; font-family: 'Manrope', system-ui, sans-serif; color: #FFFFFF; background: #06173D">
+<div class="wrap" style="min-height: 100vh; display: flex; flex-wrap: wrap; font-family: 'Manrope', system-ui, sans-serif; color: #0F2A55; background: #FFFFFF">
 
-<section class="hero" style="flex: 1.25 1 540px; min-width: 0; box-sizing: border-box; padding: 48px clamp(24px, 4.5vw, 72px) 40px; display: flex; flex-direction: column; gap: 26px; position: relative; overflow: hidden; background: #071B47">
-<div aria-hidden="true" class="fade" style="position: absolute; right: -15%; bottom: -25%; width: 100%; height: 75%; border-radius: 50%; background: radial-gradient(closest-side, rgba(40,110,255,.3), transparent); pointer-events: none"></div>
+<section class="hero" style="flex: 1.25 1 540px; min-width: 0; box-sizing: border-box; padding: 48px clamp(24px, 4.5vw, 72px) 40px; display: flex; flex-direction: column; gap: 26px; position: relative; overflow: hidden; background: #FFFFFF">
+<div aria-hidden="true" class="fade" style="position: absolute; right: -15%; bottom: -25%; width: 100%; height: 75%; border-radius: 50%; background: radial-gradient(closest-side, rgba(40,110,255,.10), transparent); pointer-events: none"></div>
 
 <div class="r1" style="display: flex; align-items: center; gap: 16px; position: relative">
-<div class="logo-box" style="width: 68px; height: 68px; flex-shrink: 0; border-radius: 50%; background: #FFFFFF; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(26,115,255,.45)">
+<div class="logo-box" style="width: 68px; height: 68px; flex-shrink: 0; border-radius: 50%; background: #FFFFFF; border: 1px solid #E2E8F0; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(26,115,255,.45)">
 @include('partials.brand-logo')
 </div>
 <div style="display: flex; flex-direction: column; gap: 6px">
 <div class="brand-name" style="font-size: 26px; font-weight: 800; line-height: 1.15">Диспетчерийн үндэсний төв</div>
-<div style="font-size: 12px; letter-spacing: .24em; color: #A8BFEA">NATIONAL DISPATCHING CENTER</div>
+<div class="brand-en" style="font-size: 16px; font-weight: 800; line-height: 1.15">National Dispatching Center</div>
 </div>
 </div>
 
 <div style="display: flex; flex-direction: column; gap: 16px; position: relative; margin-top: 14px">
-<div class="r2 eyebrow" style="font-size: 14px; letter-spacing: .26em; color: #A8BFEA">КОМПЬЮТЕР <span style="color: #4C9BFF">•</span> СҮЛЖЭЭ <span style="color: #4C9BFF">•</span> ЗАСВАР ҮЙЛЧИЛГЭЭ</div>
-<h1 class="r3 headline" style="margin: 0; font-size: clamp(36px, 4.4vw, 66px); line-height: 1.1; font-weight: 800">Засвар үйлчилгээний<br>дуудлагаа<br>бүртгээрэй.</h1>
-<p class="r4 lead" style="margin: 0; font-size: 20px; line-height: 1.5; color: #C9D8F5; max-width: 580px">Компьютер, сүлжээний гэмтэл, доголдлоо мэдээлж, засварын явцыг нэг дор хянаарай.</p>
+<h1 class="r3 headline" style="margin: 0; font-size: clamp(26px, 2.8vw, 42px); line-height: 1.1; font-weight: 800">IT засвар үйлчилгээний<br>дуудлага, хүсэлт</h1>
+<p class="r4 lead" style="margin: 0; font-size: 20px; line-height: 1.5; color: #475569; max-width: 580px">Системийн хөгжүүлэлт, засвар - компьютер - сүлжээ</p>
 </div>
 
 <div class="r5 illo" style="position: relative; width: 100%; max-width: 800px">
@@ -227,32 +226,32 @@ button:focus-visible,a:focus-visible{outline:3px solid #8CC0FF;outline-offset:2p
 <rect x="250" y="274" width="8" height="20" fill="#0A1C4A"></rect>
 <rect x="270" y="274" width="8" height="20" fill="#0A1C4A"></rect>
 <rect x="306" y="280" width="16" height="8" fill="#0A1C4A"></rect>
-<path d="M322 282 H424 L432 284 L424 286 H322 Z" fill="#C9D8F5"></path>
+<path d="M322 282 H424 L432 284 L424 286 H322 Z" fill="#94A3B8"></path>
 </g>
 </g>
 <g class="tool2">
 <g transform="rotate(6 540 300)">
-<path d="M462 296 H600" stroke="#C9D8F5" stroke-width="10" stroke-linecap="round"></path>
-<circle cx="606" cy="296" r="13" fill="#C9D8F5"></circle>
-<rect x="606" y="290" width="16" height="12" fill="#071B47"></rect>
-<circle cx="458" cy="296" r="10" fill="#C9D8F5"></circle>
-<circle cx="458" cy="296" r="5" fill="#071B47"></circle>
+<path d="M462 296 H600" stroke="#94A3B8" stroke-width="10" stroke-linecap="round"></path>
+<circle cx="606" cy="296" r="13" fill="#94A3B8"></circle>
+<rect x="606" y="290" width="16" height="12" fill="#FFFFFF"></rect>
+<circle cx="458" cy="296" r="10" fill="#94A3B8"></circle>
+<circle cx="458" cy="296" r="5" fill="#FFFFFF"></circle>
 </g>
 </g>
 </svg>
 </div>
 
-<div class="feats" style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; position: relative; margin-top: auto; font-size: 18px; color: #E6EEFF">
+<div class="feats" style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; position: relative; margin-top: auto; font-size: 18px; color: #0F2A55">
 <div class="ft1" style="display: flex; align-items: center; gap: 14px">
 <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4C9BFF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M12 18v-6M9 15h6"></path></svg>
 Дуудлага бүртгэх
 </div>
-<span class="sep" aria-hidden="true" style="width: 1px; height: 48px; background: rgba(140,175,240,.3)"></span>
+<span class="sep" aria-hidden="true" style="width: 1px; height: 48px; background: #CBD5E1"></span>
 <div class="ft2" style="display: flex; align-items: center; gap: 14px">
 <svg class="feat-gear" aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4C9BFF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
 Засварын явц
 </div>
-<span class="sep" aria-hidden="true" style="width: 1px; height: 48px; background: rgba(140,175,240,.3)"></span>
+<span class="sep" aria-hidden="true" style="width: 1px; height: 48px; background: #CBD5E1"></span>
 <div class="ft3" style="display: flex; align-items: center; gap: 14px">
 <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4C9BFF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
 Техникийн үйлчилгээ
@@ -260,23 +259,15 @@ button:focus-visible,a:focus-visible{outline:3px solid #8CC0FF;outline-offset:2p
 </div>
 </section>
 
-<main class="panel" style="flex: 1 1 400px; min-width: 0; box-sizing: border-box; padding: 32px 24px; display: flex; flex-direction: column; align-items: center; background: #082056; border-left: 1px solid rgba(140,175,240,.14)">
-<div class="fade" style="align-self: stretch; display: flex; justify-content: flex-end">
-<button type="button" style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px; background: transparent; border: 0; color: #FFFFFF; font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer">
-<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.6"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"></path></svg>
-Монгол / MN
-<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
-</button>
-</div>
-
+<main class="panel" style="flex: 1 1 400px; min-width: 0; box-sizing: border-box; padding: 32px 24px; display: flex; flex-direction: column; align-items: center; background: #FFFFFF; border-left: 1px solid #E2E8F0">
 <form method="POST" action="{{ route('login.attempt') }}" id="loginForm" class="login" novalidate style="width: 100%; max-width: 380px; margin: auto 0; padding: 20px 0; display: flex; flex-direction: column; gap: 16px">
 @csrf
 <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center">
-<div class="lock" style="width: 72px; height: 66px; border-radius: 14px; background: #0D2A6B; border: 1px solid rgba(140,175,240,.18); display: flex; align-items: center; justify-content: center; margin-bottom: 8px">
-<svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="12" rx="2.5" fill="#1A73FF"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="#1A73FF" stroke-width="2.4"></path><circle cx="12" cy="15.5" r="1.8" fill="#071B47"></circle><path d="M12 16v2.6" stroke="#071B47" stroke-width="1.8" stroke-linecap="round"></path></svg>
+<div class="lock" style="width: 72px; height: 66px; border-radius: 14px; background: #EEF4FF; border: 1px solid #D6E2F5; display: flex; align-items: center; justify-content: center; margin-bottom: 8px">
+<svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="12" rx="2.5" fill="#1A73FF"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="#1A73FF" stroke-width="2.4"></path><circle cx="12" cy="15.5" r="1.8" fill="#FFFFFF"></circle><path d="M12 16v2.6" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"></path></svg>
 </div>
 <h2 class="f1 title" style="margin: 0; font-size: 28px; font-weight: 800">Тавтай морил!</h2>
-<p class="f1" style="margin: 0; font-size: 15px; color: #A8C4F5">Байгууллагын эрхээрээ нэвтэрнэ үү.</p>
+<p class="f1" style="margin: 0; font-size: 15px; color: #5B6B8C">Байгууллагын эрхээрээ нэвтэрнэ үү.</p>
 </div>
 
 @if ($errors->any())
@@ -289,25 +280,25 @@ button:focus-visible,a:focus-visible{outline:3px solid #8CC0FF;outline-offset:2p
 <div class="f2" style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px">
 <label for="username" style="font-size: 14px; font-weight: 500">Нэвтрэх нэр</label>
 <div style="position: relative">
-<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9D8F5" stroke-width="1.6" style="position: absolute; left: 14px; top: 14px"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 4-6 8-6s8 2 8 6"></path></svg>
-<input id="username" name="username" class="inp @error('username') is-invalid @enderror" type="text" value="{{ old('username') }}" autocomplete="username" placeholder="Нэвтрэх нэрээ оруулна уу" autofocus required style="width: 100%; height: 48px; box-sizing: border-box; padding: 0 14px 0 46px; font-size: 15px; font-family: inherit; color: #FFFFFF; background: #0B2560; border: 1px solid #2B4C8F; border-radius: 8px; transition: border-color .2s, box-shadow .2s">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.6" style="position: absolute; left: 14px; top: 14px"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 4-6 8-6s8 2 8 6"></path></svg>
+<input id="username" name="username" class="inp @error('username') is-invalid @enderror" type="text" value="{{ old('username') }}" autocomplete="username" placeholder="Нэвтрэх нэрээ оруулна уу" autofocus required style="width: 100%; height: 48px; box-sizing: border-box; padding: 0 14px 0 46px; font-size: 15px; font-family: inherit; color: #0F2A55; background: #F7F9FC; border: 1px solid #CBD5E1; border-radius: 8px; transition: border-color .2s, box-shadow .2s">
 </div>
 </div>
 
 <div class="f3" style="display: flex; flex-direction: column; gap: 6px">
 <label for="password" style="font-size: 14px; font-weight: 500">Нууц үг</label>
 <div style="position: relative">
-<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9D8F5" stroke-width="1.6" style="position: absolute; left: 14px; top: 14px"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"></path></svg>
-<input id="password" name="password" class="inp @error('password') is-invalid @enderror" type="password" autocomplete="current-password" placeholder="Нууц үгээ оруулна уу" required style="width: 100%; height: 48px; box-sizing: border-box; padding: 0 52px 0 46px; font-size: 15px; font-family: inherit; color: #FFFFFF; background: #0B2560; border: 1px solid #2B4C8F; border-radius: 8px; transition: border-color .2s, box-shadow .2s">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.6" style="position: absolute; left: 14px; top: 14px"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"></path></svg>
+<input id="password" name="password" class="inp @error('password') is-invalid @enderror" type="password" autocomplete="current-password" placeholder="Нууц үгээ оруулна уу" required style="width: 100%; height: 48px; box-sizing: border-box; padding: 0 52px 0 46px; font-size: 15px; font-family: inherit; color: #0F2A55; background: #F7F9FC; border: 1px solid #CBD5E1; border-radius: 8px; transition: border-color .2s, box-shadow .2s">
 <button type="button" id="hd-eye" aria-label="Нууц үгийг харуулах" style="position: absolute; right: 2px; top: 2px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 8px; cursor: pointer">
-<svg id="eye-off" style="display:none" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle><path d="M3 3l18 18"></path></svg>
-<svg id="eye-on" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.8"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+<svg id="eye-off" style="display:none" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="1.8" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle><path d="M3 3l18 18"></path></svg>
+<svg id="eye-on" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="1.8"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
 </button>
 </div>
 </div>
 
 <div class="f4" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px 8px">
-<label for="remember" style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: #E6EEFF; min-height: 44px; cursor: pointer">
+<label for="remember" style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: #1E293B; min-height: 44px; cursor: pointer">
 <input id="remember" name="remember" value="1" type="checkbox" @checked(old('remember')) style="width: 18px; height: 18px; margin: 0; accent-color: #1A73FF">
 Намайг сана
 </label>
@@ -318,18 +309,9 @@ button:focus-visible,a:focus-visible{outline:3px solid #8CC0FF;outline-offset:2p
 <span id="loginLabel">Нэвтрэх</span>
 <svg class="arw" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
 </button>
-
-<div class="f5" style="display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 12px">
-<div style="display: flex; align-items: center; gap: 14px; width: 100%">
-<span style="flex: 1; height: 1px; background: rgba(140,175,240,.3)"></span>
-<span style="font-size: 14px; color: #C9D8F5">Нэвтрэхэд тусламж хэрэгтэй юу?</span>
-<span style="flex: 1; height: 1px; background: rgba(140,175,240,.3)"></span>
-</div>
-<a href="#" style="font-size: 15px; text-decoration: none; min-height: 36px; display: flex; align-items: center">IT ажилтантай холбогдох</a>
-</div>
 </form>
 
-<div class="fade" style="align-self: stretch; text-align: right; font-size: 13px; color: #A8BFEA">© {{ now()->year }} Диспетчерийн үндэсний төв ТӨХХК</div>
+<div class="fade" style="align-self: stretch; text-align: right; font-size: 13px; color: #64748B">© {{ now()->year }} Диспетчерийн үндэсний төв ТӨХХК</div>
 </main>
 
 </div>

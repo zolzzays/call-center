@@ -14,11 +14,7 @@
     .search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
     .toolbar .search .input { padding-left: 36px; width: 280px; }
 
-    .user-cell { display: flex; align-items: center; gap: 12px; min-width: 200px; }
-    .avatar {
-        width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
-        display: grid; place-items: center; font-size: 14px; font-weight: 700; color: #fff;
-    }
+    .user-cell { min-width: 200px; }
     .user-cell strong { display: block; color: var(--navy); font-weight: 600; }
     .sub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
     .you { font-size: 10px; font-weight: 700; color: var(--primary); background: #e8f0fe; padding: 1px 6px; border-radius: 999px; margin-left: 6px; vertical-align: 1px; text-transform: uppercase; }
@@ -38,7 +34,6 @@
     .icon-btn:hover { background: #eef4ff; color: var(--primary); border-color: #d6e1ef; }
     .icon-btn.danger:hover { background: var(--danger-bg); color: var(--danger); border-color: #f3c4bd; }
     tr.inactive .user-cell strong, tr.inactive td { color: #7b8594; }
-    tr.inactive .avatar { filter: grayscale(1); opacity: .6; }
 
     @media (max-width: 900px) {
         .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -49,16 +44,6 @@
 @endsection
 
 @section('page')
-@php
-    $palette = ['#2563eb', '#0f766e', '#7c3aed', '#c2410c', '#be185d', '#0369a1', '#4d7c0f', '#b45309'];
-    $initials = function (string $name): string {
-        $parts = preg_split('/\s+/u', trim($name), -1, PREG_SPLIT_NO_EMPTY);
-        $letters = array_map(fn ($p) => mb_substr($p, 0, 1), array_slice($parts, 0, 2));
-
-        return mb_strtoupper(implode('', $letters) ?: '?');
-    };
-@endphp
-
 <div class="panel">
     <div class="panel-head">
         <div>
@@ -107,7 +92,6 @@
                     <tr class="{{ $row->is_active ? '' : 'inactive' }}">
                         <td>
                             <div class="user-cell">
-                                <span class="avatar" style="background: {{ $palette[$row->id % count($palette)] }}" aria-hidden="true">{{ $initials($row->name) }}</span>
                                 <span>
                                     <strong>{{ $row->name }}@if ($isMe)<span class="you">Та</span>@endif</strong>
                                     <span class="sub">{{ $row->username }}@if ($row->email) · {{ $row->email }}@endif</span>
