@@ -12,6 +12,8 @@ class TicketActivity extends Model
     public const ACTIONS = [
         'assigned' => 'Гүйцэтгэгчид хуваарилсан',
         'postponed' => 'Хойшлуулсан',
+        'returned' => 'Илгээгчид буцаасан',
+        'resubmitted' => 'Тодруулж дахин илгээсэн',
         'closed' => 'Хаасан',
     ];
 

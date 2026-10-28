@@ -101,8 +101,9 @@ class DashboardTest extends TestCase
         $this->assertSame(0, $response->viewData('urgencies')['urgent']['total']);
         $this->assertSame(['Скада'], array_column($response->viewData('categories'), 'label'));
 
-        $response->assertSee('Таны илгээсэн дуудлагын үзүүлэлт')
-            ->assertSee('Яаралтай байдлаар')
+        $response->assertSee('Таны илгээсэн хүсэлтийн үзүүлэлт')
+            ->assertSee('Төлөвийн бүтэц')
+            ->assertDontSee('Яаралтай байдлаар')
             ->assertSee($mine->number)
             ->assertDontSee($theirs->number)
             ->assertDontSee('Сүлжээ')
@@ -121,7 +122,7 @@ class DashboardTest extends TestCase
         $response = $this->actingAs($engineer)->get('/dashboard')->assertOk();
 
         $this->assertSame(1, $response->viewData('stats')['total']);
-        $response->assertSee('Танд ирсэн дуудлагын үзүүлэлт')
+        $response->assertSee('Танд ирсэн хүсэлтийн үзүүлэлт')
             ->assertSee($assigned->number)
             ->assertDontSee('href="'.route('tickets.create').'"', false);
     }
@@ -238,6 +239,6 @@ class DashboardTest extends TestCase
         $this->assertSame(['arrived' => 2, 'closed' => 1, 'net' => 1, 'rate' => 50.0], $response->viewData('movement'));
         $this->assertSame(1, collect($response->viewData('statuses'))->firstWhere('key', 'assigned')['value']);
 
-        $response->assertSee('Систем, төхөөрөмжөөр')->assertSee('Хугацааны эрсдэл')->assertSee('Дуудлагын хөдөлгөөн');
+        $response->assertSee('Систем, төхөөрөмжөөр')->assertDontSee('Хугацааны эрсдэл')->assertDontSee('Дуудлагын хөдөлгөөн');
     }
 }

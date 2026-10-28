@@ -57,7 +57,7 @@ class DashboardController extends Controller
             'urgencies' => $this->breakdown($tickets, 'urgency', Ticket::URGENCIES, $total),
             'categories' => $this->categories($user, $period),
             'compare' => $this->compare($visible, $period),
-            'recent' => $tickets()->with(['user', 'assignee', 'repairType', 'repairCategory'])->latest('id')->limit(8)->get(),
+            'recent' => $tickets()->with(['user', 'assignee', 'coAssignee', 'handler', 'repairType', 'repairCategory'])->latest('id')->limit(8)->get(),
         ] + $this->details($tickets, $visible, $period, $byStatus));
     }
 

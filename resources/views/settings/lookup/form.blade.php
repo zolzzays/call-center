@@ -49,7 +49,7 @@
 
         <div class="form-actions">
             <button type="submit" class="btn">Хадгалах</button>
-            <a href="{{ route($routePrefix.'.index') }}" class="btn btn-ghost">Буцах</a>
+            <a href="{{ route($routePrefix.'.index', $indexParams ?? []) }}" class="btn btn-ghost">Буцах</a>
         </div>
     </form>
 </div>

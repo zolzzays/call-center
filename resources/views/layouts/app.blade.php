@@ -29,16 +29,22 @@
         transition: background .15s, color .15s;
     }
     .submenu a:hover { background: #f1f5fa; color: var(--text); }
+    .nav-count { margin-left: auto; min-width: 20px; padding: 1px 7px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; text-align: center; }
     .submenu a.active { background: #e8f0fe; color: var(--primary); font-weight: 600; }
 
-    .sidebar-foot { padding: 16px 12px; border-top: 1px solid #e8edf3; }
-    .sidebar-foot .who {
-        display: block; padding: 8px 12px; margin-bottom: 8px; border-radius: 6px;
+    /* Дээд мөрний баруун тал: хэрэглэгч, гарах */
+    .topbar-user { margin-left: auto; display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .topbar-user .who {
+        display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 10px; border-radius: 8px;
         font-size: 13px; text-decoration: none; color: var(--text);
     }
-    .sidebar-foot .who:hover, .sidebar-foot .who.active { background: #f1f5fa; }
-    .sidebar-foot .who strong { display: block; color: var(--navy); margin-bottom: 4px; }
-    .sidebar-foot .btn { width: 100%; height: 36px; }
+    .topbar-user .who:hover, .topbar-user .who.active { background: #f1f5fa; }
+    .topbar-user .who-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; text-align: right; }
+    .topbar-user .who strong, .topbar-user .who small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .topbar-user .who strong { color: var(--navy); }
+    .topbar-user .who small { font-size: 12px; color: var(--muted); max-width: 260px; }
+    .topbar-user form { margin: 0; }
+    .topbar-user .btn { height: 36px; padding: 0 14px; }
 
     .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .topbar {
@@ -58,7 +64,7 @@
     .badge-on { background: #e7f5ec; color: var(--excel); }
     .badge-off { background: #fdecea; color: var(--danger); }
     /* Төлөв, яаралтай байдлын тэмдэг: цагаан дэвсгэр, өнгөт хүрээ */
-    .badge-normal, .badge-urgent, .badge-critical, .badge-new, .badge-assigned, .badge-postponed, .badge-closed {
+    .badge-normal, .badge-urgent, .badge-critical, .badge-new, .badge-assigned, .badge-postponed, .badge-returned, .badge-closed {
         background: #fff; border: 1px solid currentColor; text-transform: none; letter-spacing: 0; font-size: 11px; padding: 2px 8px;
     }
     .badge-normal { color: #2563eb; }
@@ -67,6 +73,7 @@
     .badge-new { color: #2f6fb0; }
     .badge-assigned { color: #6d5bd0; }
     .badge-postponed { color: #b7791f; }
+    .badge-returned { color: #c2410c; }
     .badge-closed { color: var(--excel); }
 
     .container { width: 100%; max-width: 1100px; padding: 32px 24px; }
@@ -162,6 +169,9 @@
         .shell.nav-open .sidebar { transform: none; }
         .shell.nav-open .backdrop { display: block; position: fixed; inset: 0; background: rgba(15, 30, 50, .35); z-index: 10; }
         .menu-toggle { display: inline-flex; }
+        .topbar { padding: 0 16px; }
+        .topbar h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        .topbar-user .badge { display: none; }
         .container { padding: 20px 16px; }
         .toolbar .input { width: 100%; }
         .grid-2 { grid-template-columns: 1fr; }
@@ -181,8 +191,13 @@
         'settings.departments' => 'Алба, хэлтэс',
         'settings.repair-types' => 'Засвар төрөл',
         'settings.repair-categories' => 'Засвар ангилал',
+        'settings.system-modules' => 'Системийн модуль',
+        'settings.access-types' => 'Эрхийн төрөл',
+        'settings.access-request-types' => 'Хүсэлтийн төрөл',
     ];
     $settingsOpen = request()->routeIs('settings.*');
+    // МАБ-ын хандах эрхийн хүсэлтээс энэ хэрэглэгчийн батлах ёстой нь
+    $mabAwaiting = \App\Models\AccessRequest::awaiting($user)->count();
 @endphp
 
 @section('content')
@@ -201,20 +216,20 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
                 Хянах самбар
             </a>
-            @if ($user->canSubmitTickets())
-                <a href="{{ route('tickets.create') }}" class="nav-item {{ request()->routeIs('tickets.create') ? 'active' : '' }}">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-                    Хүсэлт илгээх
-                </a>
-            @endif
-            <a href="{{ route('tickets.index') }}" class="nav-item {{ request()->routeIs('tickets.index', 'tickets.show') ? 'active' : '' }}">
+            {{-- Хүсэлт илгээх маягт «Миний хүсэлтүүд» хуудасны баруун дээд товчоор нээгдэнэ --}}
+            <a href="{{ route('tickets.index') }}" class="nav-item {{ request()->routeIs('tickets.index', 'tickets.show', 'tickets.create') ? 'active' : '' }}">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-                {{ $user->isAdmin() ? 'Хүсэлт илгээх' : ($user->isAssignee() ? 'Ирсэн хүсэлт' : 'Миний дуудлага') }}
+                {{ $user->isAdmin() ? 'Хүсэлт илгээх' : ($user->isAssignee() ? 'Ирсэн хүсэлт' : 'Миний хүсэлтүүд') }}
+            </a>
+            <a href="{{ route('access-requests.index') }}" class="nav-item {{ request()->routeIs('access-requests.*') ? 'active' : '' }}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                МАБ
+                @if ($mabAwaiting > 0) <span class="nav-count" title="Батлах хүсэлт">{{ $mabAwaiting }}</span> @endif
             </a>
 
             @if ($user->isAdmin())
-                <div class="nav-group {{ $settingsOpen ? 'open' : '' }}" id="settingsGroup">
-                    <button type="button" class="nav-item {{ $settingsOpen ? 'parent-active' : '' }}" id="settingsToggle" aria-expanded="{{ $settingsOpen ? 'true' : 'false' }}" aria-controls="settingsMenu">
+                <div class="nav-group {{ $settingsOpen ? 'open' : '' }}">
+                    <button type="button" class="nav-item {{ $settingsOpen ? 'parent-active' : '' }}" data-nav-toggle aria-expanded="{{ $settingsOpen ? 'true' : 'false' }}" aria-controls="settingsMenu">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                         Тохиргоо
                         <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
@@ -227,17 +242,6 @@
                 </div>
             @endif
         </nav>
-
-        <div class="sidebar-foot">
-            <a href="{{ route('profile') }}" class="who {{ request()->routeIs('profile*') ? 'active' : '' }}" title="Миний профайл">
-                <strong>{{ $user->name }}</strong>
-                <span class="badge {{ $user->isAdmin() ? 'badge-admin' : 'badge-user' }}">{{ $user->role?->name ?? '—' }}</span>
-            </a>
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit" class="btn btn-ghost">Гарах</button>
-            </form>
-        </div>
     </aside>
     <div class="backdrop" id="backdrop"></div>
 
@@ -247,6 +251,20 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
             </button>
             <h2>@yield('title')</h2>
+
+            <div class="topbar-user">
+                <a href="{{ route('profile') }}" class="who {{ request()->routeIs('profile*') ? 'active' : '' }}" title="Миний профайл">
+                    <span class="who-text">
+                        <strong>{{ $user->name }}</strong>
+                        @if ($user->department) <small>{{ $user->department->name }}</small> @endif
+                    </span>
+                    <span class="badge {{ $user->isAdmin() ? 'badge-admin' : 'badge-user' }}">{{ $user->role?->name ?? '—' }}</span>
+                </a>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="btn btn-ghost">Гарах</button>
+                </form>
+            </div>
         </header>
 
         <div class="container @yield('container')">
@@ -270,14 +288,12 @@
         document.getElementById('menuToggle').addEventListener('click', () => shell.classList.add('nav-open'));
         document.getElementById('backdrop').addEventListener('click', () => shell.classList.remove('nav-open'));
 
-        const group = document.getElementById('settingsGroup');
-        const toggle = document.getElementById('settingsToggle');
-        if (group && toggle) {
+        document.querySelectorAll('[data-nav-toggle]').forEach((toggle) => {
             toggle.addEventListener('click', () => {
-                const open = group.classList.toggle('open');
+                const open = toggle.closest('.nav-group').classList.toggle('open');
                 toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
             });
-        }
+        });
 
         document.querySelectorAll('form[data-confirm]').forEach((form) => {
             form.addEventListener('submit', (e) => {

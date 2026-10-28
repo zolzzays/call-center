@@ -267,10 +267,10 @@
                 </div>
                 <div class="grid-2">
                     <div class="field">
-                        <label for="due_at">Хүссэн хугацаа</label>
-                        <input id="due_at" name="due_at" type="datetime-local" class="input" value="{{ old('due_at') }}" min="{{ now()->format('Y-m-d\TH:i') }}">
-                        <div class="field-hint">Заавал биш. Хэзээ гэхэд шийдвэрлүүлэх хүсэлтэй вэ?</div>
-                        @error('due_at') <div class="error">{{ $message }}</div> @enderror
+                        <label for="sent_at">Илгээх огноо</label>
+                        {{-- Зөвхөн харуулна; хадгалахдаа серверийн цагийг авна --}}
+                        <input id="sent_at" type="text" class="input" value="{{ now()->format('Y-m-d H:i') }}" readonly aria-readonly="true">
+                        <div class="field-hint">Илгээх үеийн огноо, цаг автоматаар бүртгэгдэнэ.</div>
                     </div>
                 </div>
             </section>
@@ -292,6 +292,14 @@
 
 <script>
     (function () {
+        // Илгээх огноог хуудас нээлттэй байх хооронд минут тутам шинэчилнэ
+        const sentAt = document.getElementById('sent_at');
+        const pad = (n) => String(n).padStart(2, '0');
+        setInterval(() => {
+            const d = new Date();
+            sentAt.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }, 30000);
+
         // Ангилал → систем, төхөөрөмжийн шүүлт
         const categories = @json($categories, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
         const typeSelect = document.getElementById('repair_type_id');

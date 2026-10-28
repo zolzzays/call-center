@@ -1,13 +1,17 @@
 <?php
 
+use App\Http\Controllers\AccessRequestController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Settings\AccessRequestTypeController;
+use App\Http\Controllers\Settings\AccessTypeController;
 use App\Http\Controllers\Settings\DepartmentController;
 use App\Http\Controllers\Settings\PositionController;
 use App\Http\Controllers\Settings\RepairCategoryController;
 use App\Http\Controllers\Settings\RepairTypeController;
 use App\Http\Controllers\Settings\RoleController;
+use App\Http\Controllers\Settings\SystemModuleController;
 use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +43,17 @@ Route::middleware('auth')->group(function () {
         ->name('tickets.attachments.show');
     Route::put('/tickets/{ticket}/close', [TicketController::class, 'close'])->name('tickets.close');
     Route::put('/tickets/{ticket}/postpone', [TicketController::class, 'postpone'])->name('tickets.postpone');
+    Route::put('/tickets/{ticket}/return', [TicketController::class, 'returnToReporter'])->name('tickets.return');
+    Route::put('/tickets/{ticket}/resubmit', [TicketController::class, 'resubmit'])->name('tickets.resubmit');
+
+    // МАБ-ын хандах эрхийн хүсэлт (audit нь {access_request}-ээс өмнө байна)
+    Route::get('/access-requests/audit', [AccessRequestController::class, 'audit'])->name('access-requests.audit');
+    Route::resource('access-requests', AccessRequestController::class)->only(['index', 'create', 'store', 'show']);
+    Route::put('/access-requests/{access_request}/review', [AccessRequestController::class, 'review'])->name('access-requests.review');
+    Route::put('/access-requests/{access_request}/revoke', [AccessRequestController::class, 'revoke'])->name('access-requests.revoke');
+    Route::put('/access-requests/{access_request}/approve', [AccessRequestController::class, 'approve'])->name('access-requests.approve');
+    Route::put('/access-requests/{access_request}/reject', [AccessRequestController::class, 'reject'])->name('access-requests.reject');
+    Route::put('/access-requests/{access_request}/grant', [AccessRequestController::class, 'grant'])->name('access-requests.grant');
 
     Route::middleware('role:admin')->group(function () {
         Route::get('/admin', DashboardController::class)->name('admin.dashboard');
@@ -53,6 +68,9 @@ Route::middleware('auth')->group(function () {
             Route::resource('departments', DepartmentController::class)->except('show');
             Route::resource('repair-types', RepairTypeController::class)->except('show');
             Route::resource('repair-categories', RepairCategoryController::class)->except('show');
+            Route::resource('system-modules', SystemModuleController::class)->except('show');
+            Route::resource('access-types', AccessTypeController::class)->except('show');
+            Route::resource('access-request-types', AccessRequestTypeController::class)->except('show');
         });
     });
 });

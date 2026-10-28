@@ -2,7 +2,7 @@
 
 @section('container', 'wide')
 
-@section('title', auth()->user()->isAdmin() ? 'Хүсэлт илгээх' : (auth()->user()->isAssignee() ? 'Ирсэн хүсэлт' : 'Миний дуудлага, хүсэлт'))
+@section('title', auth()->user()->isAdmin() ? 'Хүсэлт илгээх' : (auth()->user()->isAssignee() ? 'Ирсэн хүсэлт' : 'Миний хүсэлтүүд'))
 
 @section('page-styles')
     .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
@@ -44,6 +44,7 @@
     .pill-new { color: #2f6fb0; }
     .pill-assigned { color: #6d5bd0; }
     .pill-postponed { color: #b7791f; }
+    .pill-returned { color: #c2410c; }
     .pill-closed { color: var(--excel); }
     tr.is-closed td:not(.urgency-bar) { color: #7b8594; }
     tr.is-closed .urgency-bar { opacity: .35; }
@@ -58,8 +59,17 @@
     .tab-count { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: #eef1f4; color: var(--muted); }
     .tab.active .tab-count { background: #e8f0fe; color: var(--primary); }
 
-    .due-late { color: var(--danger); font-weight: 600; }
-    .due-soon { color: #b45309; font-weight: 600; }
+    .returned-notice {
+        display: flex; align-items: center; gap: 12px; padding: 14px 18px; margin-bottom: 20px; border-radius: 12px;
+        background: #fff4ed; border: 1px solid #fbcfb0; color: #9a3412; font-size: 14px; line-height: 1.5; text-decoration: none;
+    }
+    .returned-notice:hover { background: #ffedd5; }
+    .returned-notice svg { flex-shrink: 0; color: #c2410c; }
+    .returned-notice strong { display: block; color: #c2410c; }
+    .returned-notice-link { margin-left: auto; font-weight: 700; white-space: nowrap; color: #c2410c; }
+    .returned-hint { color: #c2410c; font-weight: 600; }
+    tr.is-returned td { background: #fffaf5; }
+
 
     .who { white-space: nowrap; }
 
@@ -84,7 +94,7 @@
     $isAssignee = $me->isAssignee();
     $showSender = $isAdmin || $isAssignee;
     $showAssignee = ! $isAssignee;
-    $heading = $isAdmin ? 'Хүсэлт илгээх' : ($isAssignee ? 'Ирсэн хүсэлт' : 'Миний дуудлага, хүсэлт');
+    $heading = $isAdmin ? 'Хүсэлт илгээх' : ($isAssignee ? 'Ирсэн хүсэлт' : 'Миний хүсэлтүүд');
     $subheading = $isAdmin ? 'Ирсэн бүх дуудлага, хүсэлт' : ($isAssignee ? 'Танд хуваарилагдсан дуудлага, хүсэлтүүд' : 'Таны илгээсэн дуудлага, хүсэлтүүд');
     // Одоогийн шүүлтийг хадгалж нэг утгыг солино ("open" нь анхдагч тул URL-д бичихгүй)
     $listUrl = fn (array $over) => route('tickets.index', array_filter(array_merge(
@@ -92,9 +102,22 @@
          'from' => $from?->format('Y-m-d'), 'to' => $to?->format('Y-m-d')], $over
     )));
     $filterUrl = fn (?string $u) => $listUrl(['urgency' => $u]);
-    $statusTabs = ['open' => 'Идэвхтэй', 'postponed' => 'Хойшлуулсан', 'closed' => 'Хаасан', 'all' => 'Бүгд'];
-    $columns = 7 + (int) $showSender + (int) $showAssignee;
+    $statusTabs = ['open' => 'Идэвхтэй', 'postponed' => 'Хойшлуулсан', 'returned' => 'Буцаасан', 'closed' => 'Хаасан', 'all' => 'Бүгд'];
+    // Илгээгчид буцаагдсан, тодруулга хүлээж буй хүсэлтүүд
+    $returnedCount = $me->canSubmitTickets() ? $statusCounts['returned'] : 0;
+    $columns = 6 + (int) $showSender + (int) $showAssignee;
 @endphp
+
+@if ($returnedCount > 0)
+    <a href="{{ $listUrl(['status' => 'returned']) }}" class="returned-notice" role="status">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+        <span>
+            <strong>Таны {{ $returnedCount }} хүсэлтийг гүйцэтгэгч буцаасан байна.</strong>
+            Хүсэлтээ нээж, шалтгааныг уншаад тодруулгаа бичиж дахин илгээнэ үү.
+        </span>
+        <span class="returned-notice-link">Харах →</span>
+    </a>
+@endif
 
 <div class="panel">
     <div class="panel-head">
@@ -158,7 +181,6 @@
                     <th>Дугаар</th>
                     <th>Ангилал / Систем</th>
                     <th>Яаралтай байдал</th>
-                    <th>Хугацаа</th>
                     @if ($showSender) <th>Илгээгч</th> @endif
                     @if ($showAssignee) <th>Гүйцэтгэгч</th> @endif
                     <th>Төлөв</th>
@@ -169,12 +191,8 @@
                 @forelse ($tickets as $ticket)
                     @php
                         $url = route('tickets.show', $ticket);
-                        // Хойшлуулсан бол шинэ хугацааг, хаагдсан бол хаасан огноог харуулна
-                        $postponed = $ticket->status === 'postponed' && $ticket->postponed_until;
-                        $due = $postponed ? $ticket->postponed_until : $ticket->due_at;
-                        $dueClass = $ticket->isClosed() || ! $due ? '' : ($due->isPast() ? 'due-late' : ($due->lt(now()->addDay()) ? 'due-soon' : ''));
                     @endphp
-                    <tr data-href="{{ $url }}" class="u-{{ $ticket->urgency }} {{ $ticket->isClosed() ? 'is-closed' : '' }}">
+                    <tr data-href="{{ $url }}" class="u-{{ $ticket->urgency }} {{ $ticket->isClosed() ? 'is-closed' : '' }} {{ $ticket->canBeResubmittedBy($me) ? 'is-returned' : '' }}">
                         <td class="urgency-bar" aria-hidden="true"></td>
                         <td>
                             <a href="{{ $url }}" class="num">№{{ $ticket->number }}</a>
@@ -190,17 +208,6 @@
                             <span class="desc" title="{{ $ticket->description }}">{{ $ticket->description }}</span>
                         </td>
                         <td><span class="pill pill-{{ $ticket->urgency }}">{{ $ticket->urgencyLabel() }}</span></td>
-                        <td class="nowrap">
-                            @if ($ticket->isClosed())
-                                {{ $ticket->closed_at?->format('Y-m-d H:i') }}
-                                <span class="sub">Хаасан</span>
-                            @elseif ($due)
-                                <span class="{{ $dueClass }}">{{ $due->format('Y-m-d H:i') }}</span>
-                                <span class="sub">{{ $postponed ? 'Хойшлуулсан · ' : '' }}{{ $due->isPast() ? 'Хугацаа хэтэрсэн' : str_replace('одоогоос ', '', $due->locale('mn')->diffForHumans(['parts' => 1])) }}</span>
-                            @else
-                                <span class="muted">—</span>
-                            @endif
-                        </td>
                         @if ($showSender)
                             <td>
                                 <span class="who">
@@ -212,14 +219,17 @@
                             <td>
                                 @if ($ticket->assignee)
                                     <span class="who">
-                                        {{ $ticket->assignee->name }}
+                                        {{ $ticket->assigneeDisplay() }}
                                     </span>
                                 @else
                                     <span class="muted">Хуваарилаагүй</span>
                                 @endif
                             </td>
                         @endif
-                        <td><span class="pill pill-{{ $ticket->status }}">{{ $ticket->statusLabel() }}</span></td>
+                        <td>
+                            <span class="pill pill-{{ $ticket->status }}">{{ $ticket->statusLabel() }}</span>
+                            @if ($ticket->canBeResubmittedBy($me)) <span class="sub returned-hint">Тодруулга шаардлагатай</span> @endif
+                        </td>
                         <td class="nowrap">
                             {{ $ticket->created_at->format('Y-m-d') }}
                             <span class="sub">{{ $ticket->created_at->format('H:i') }}</span>

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\TicketAssigned;
+use App\Notifications\TicketResubmitted;
 use App\Notifications\TicketStatusChanged;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,11 +30,12 @@ class Ticket extends Model
         'new' => 'Шинэ',
         'assigned' => 'Хуваарилсан',
         'postponed' => 'Хойшлуулсан',
+        'returned' => 'Буцаасан',
         'closed' => 'Хаасан',
     ];
 
     /** Шийдвэрлэгдээгүй байгаа төлөвүүд */
-    public const OPEN_STATUSES = ['new', 'assigned', 'postponed'];
+    public const OPEN_STATUSES = ['new', 'assigned', 'postponed', 'returned'];
 
     protected $fillable = [
         'user_id', 'type', 'repair_type_id', 'repair_category_id',
@@ -55,7 +57,9 @@ class Ticket extends Model
     {
         return match (true) {
             $user->isAdmin() => $query,
-            $user->isAssignee() => $query->where('assignee_id', $user->id),
+            $user->isAssignee() => $query->where(fn (Builder $q) => $q
+                ->where('assignee_id', $user->id)
+                ->orWhere('co_assignee_id', $user->id)),
             default => $query->where('user_id', $user->id),
         };
     }
@@ -84,16 +88,23 @@ class Ticket extends Model
     }
 
     /**
-     * Гүйцэтгэгчид хуваарилж мэйлээр мэдэгдэнэ.
+     * Гүйцэтгэгчид (хамтран гүйцэтгэгчтэй бол хоёуланд нь) хуваарилж мэйлээр мэдэгдэнэ.
      * Мэйл илгээж чадаагүй ч хуваарилалт хадгалагдана.
      *
-     * @return bool мэйл илгээгдсэн эсэх
+     * @return bool бүх гүйцэтгэгчид мэйл илгээгдсэн эсэх
      */
-    public function assignTo(User $assignee, ?User $actor = null): bool
+    public function assignTo(User $assignee, ?User $actor = null, ?User $coAssignee = null): bool
     {
-        DB::transaction(function () use ($assignee, $actor) {
+        if ($coAssignee?->is($assignee)) {
+            $coAssignee = null;
+        }
+
+        DB::transaction(function () use ($assignee, $actor, $coAssignee) {
             $this->forceFill([
                 'assignee_id' => $assignee->id,
+                'co_assignee_id' => $coAssignee?->id,
+                // Шинээр хуваарилахад өмнөх гүйцэтгэгчийн үйлдэл хамааралгүй болно
+                'handled_by_id' => null,
                 'assigned_at' => now(),
                 // Хойшлуулсан дуудлагыг өөр хүнд шилжүүлсэн ч хойшлуулсан хэвээр үлдэнэ
                 'status' => $this->status === 'postponed' ? 'postponed' : 'assigned',
@@ -103,12 +114,20 @@ class Ticket extends Model
                 'user_id' => $actor?->id,
                 'action' => 'assigned',
                 'assignee_id' => $assignee->id,
+                'note' => $coAssignee ? 'Хамтран гүйцэтгэгч: '.$coAssignee->name : null,
             ]);
         });
 
         $this->setRelation('assignee', $assignee);
+        $this->setRelation('coAssignee', $coAssignee);
+        $this->setRelation('handler', null);
 
-        return self::notifySafely($assignee, new TicketAssigned($this));
+        $mailed = self::notifySafely($assignee, new TicketAssigned($this));
+        if ($coAssignee) {
+            $mailed = self::notifySafely($coAssignee, new TicketAssigned($this)) && $mailed;
+        }
+
+        return $mailed;
     }
 
     /** Гүйцэтгэгч шийдвэрлэсэн тайлбартай хаана. Илгээгчид мэдэгдэнэ. */
@@ -120,7 +139,7 @@ class Ticket extends Model
                 'resolution' => $resolution,
                 'closed_at' => now(),
                 'postponed_until' => null,
-            ])->save();
+            ] + $this->handlerFields($actor, always: true))->save();
 
             $this->activities()->create(['user_id' => $actor->id, 'action' => 'closed', 'note' => $resolution]);
         });
@@ -132,7 +151,7 @@ class Ticket extends Model
     public function postpone(User $actor, CarbonInterface $until, string $reason): void
     {
         DB::transaction(function () use ($actor, $until, $reason) {
-            $this->forceFill(['status' => 'postponed', 'postponed_until' => $until])->save();
+            $this->forceFill(['status' => 'postponed', 'postponed_until' => $until] + $this->handlerFields($actor))->save();
 
             $this->activities()->create([
                 'user_id' => $actor->id,
@@ -143,6 +162,64 @@ class Ticket extends Model
         });
 
         $this->notifyReporter($actor);
+    }
+
+    /** Гүйцэтгэгч тодруулга авахаар илгээгчид шалтгаантай буцаана. Илгээгчид мэдэгдэнэ. */
+    public function returnToReporter(User $actor, string $reason): void
+    {
+        DB::transaction(function () use ($actor, $reason) {
+            $this->forceFill(['status' => 'returned', 'postponed_until' => null] + $this->handlerFields($actor))->save();
+            $this->activities()->create(['user_id' => $actor->id, 'action' => 'returned', 'note' => $reason]);
+        });
+
+        $this->notifyReporter($actor);
+    }
+
+    /**
+     * Илгээгч тодруулга нэмж дахин илгээнэ; хүсэлт өмнөх гүйцэтгэгчид рүүгээ буцна.
+     *
+     * @return bool бүх гүйцэтгэгчид мэйл илгээгдсэн эсэх
+     */
+    public function resubmit(User $actor, string $note): bool
+    {
+        DB::transaction(function () use ($actor, $note) {
+            $this->forceFill(['status' => $this->assignee_id ? 'assigned' : 'new'])->save();
+            $this->activities()->create(['user_id' => $actor->id, 'action' => 'resubmitted', 'note' => $note]);
+        });
+
+        $this->loadMissing(['assignee', 'coAssignee']);
+        $mailed = true;
+        foreach (array_filter([$this->assignee, $this->coAssignee]) as $assignee) {
+            $mailed = self::notifySafely($assignee, new TicketResubmitted($this, $note)) && $mailed;
+        }
+
+        return $mailed;
+    }
+
+    public function isReturned(): bool
+    {
+        return $this->status === 'returned';
+    }
+
+    /** Буцаасан хүсэлтийг илгээгч л тодруулж дахин илгээнэ */
+    public function canBeResubmittedBy(User $user): bool
+    {
+        return $this->isReturned() && $this->user_id === $user->id;
+    }
+
+    /**
+     * Үйлдлийг хуваарилагдсан гүйцэтгэгч хийсэн бол түүнийг тэмдэглэнэ (хойшлуулах, буцаахыг админ хийвэл өөрчлөхгүй).
+     * Хаахад ($always) гүйцэтгэлийг бичиж хаасан хүн хэн ч байсан тэмдэглэнэ.
+     */
+    private function handlerFields(User $actor, bool $always = false): array
+    {
+        if (! $always && ! $this->isAssignedTo($actor)) {
+            return [];
+        }
+
+        $this->setRelation('handler', $actor);
+
+        return ['handled_by_id' => $actor->id];
     }
 
     private function notifyReporter(User $actor): void
@@ -180,6 +257,35 @@ class Ticket extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assignee_id');
+    }
+
+    public function coAssignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'co_assignee_id');
+    }
+
+    /** Хүсэлтийг сүүлд хаасан, хойшлуулсан эсвэл буцаасан гүйцэтгэгч */
+    public function handler(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'handled_by_id');
+    }
+
+    /** Харуулах гүйцэтгэгч: үйлдэл хийсэн гүйцэтгэгч, эс бөгөөс хуваарилагдсан бүх гүйцэтгэгч */
+    public function assigneeDisplay(): string
+    {
+        return $this->handler?->name ?? $this->assigneeNames();
+    }
+
+    /** Гүйцэтгэгчдийн нэр: "Бат, Дорж" (хуваарилаагүй бол хоосон) */
+    public function assigneeNames(): string
+    {
+        return collect([$this->assignee?->name, $this->coAssignee?->name])->filter()->implode(', ');
+    }
+
+    /** Үндсэн эсвэл хамтран гүйцэтгэгч мөн эсэх */
+    public function isAssignedTo(User $user): bool
+    {
+        return in_array($user->id, array_filter([$this->assignee_id, $this->co_assignee_id]), true);
     }
 
     public function repairType(): BelongsTo
@@ -226,16 +332,18 @@ class Ticket extends Model
     {
         return match (true) {
             $user->isAdmin() => true,
-            $user->isAssignee() => $this->assignee_id === $user->id,
+            $user->isAssignee() => $this->isAssignedTo($user),
             default => $this->user_id === $user->id,
         };
     }
 
-    /** Хаах, хойшлуулах эрх: хуваарилагдсан гүйцэтгэгч болон админ */
+    /** Хаах, хойшлуулах эрх: хуваарилагдсан гүйцэтгэгч, хамтран гүйцэтгэгч болон админ */
     public function canBeWorkedBy(User $user): bool
     {
+        // Илгээгчид буцаасан хүсэлтийг тодруулж дахин илгээх хүртэл хаах, хойшлуулах боломжгүй
         return ! $this->isClosed()
+            && ! $this->isReturned()
             && $this->assignee_id !== null
-            && ($user->isAdmin() || $this->assignee_id === $user->id);
+            && ($user->isAdmin() || $this->isAssignedTo($user));
     }
 }

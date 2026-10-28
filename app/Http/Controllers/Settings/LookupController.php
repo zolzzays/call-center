@@ -58,6 +58,18 @@ abstract class LookupController extends Controller
         return [];
     }
 
+    /** Шинэ бичлэгийн анхдагч утга (жишээ нь сонгосон шүүлтээс) */
+    protected function newItem(): Model
+    {
+        return new ($this->model());
+    }
+
+    /** Хадгалсан, устгасны дараа буцах жагсаалтын параметр (жишээ нь сонгосон шүүлт) */
+    protected function indexParams(?Model $item): array
+    {
+        return [];
+    }
+
     public function index(Request $request): View
     {
         $search = trim((string) $request->query('q'));
@@ -77,9 +89,10 @@ abstract class LookupController extends Controller
 
     public function create(): View
     {
-        $item = new ($this->model());
+        $item = $this->newItem();
 
         return view('settings.lookup.form', $this->viewData() + [
+            'indexParams' => $this->indexParams($item),
             'item' => $item,
             'locked' => [],
             'options' => $this->selectOptions($item),
@@ -89,9 +102,9 @@ abstract class LookupController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request, null);
-        $this->model()::create($data);
+        $item = $this->model()::create($data);
 
-        return redirect()->route($this->routePrefix().'.index')
+        return redirect()->route($this->routePrefix().'.index', $this->indexParams($item))
             ->with('status', $this->labels()['singular'].' нэмэгдлээ.');
     }
 
@@ -100,6 +113,7 @@ abstract class LookupController extends Controller
         $item = $this->model()::findOrFail($id);
 
         return view('settings.lookup.form', $this->viewData() + [
+            'indexParams' => $this->indexParams($item),
             'item' => $item,
             'locked' => $this->lockedFields($item),
             'options' => $this->selectOptions($item),
@@ -115,7 +129,7 @@ abstract class LookupController extends Controller
 
         $item->update($data);
 
-        return redirect()->route($this->routePrefix().'.index')
+        return redirect()->route($this->routePrefix().'.index', $this->indexParams($item))
             ->with('status', $this->labels()['singular'].' шинэчлэгдлээ.');
     }
 
@@ -129,7 +143,7 @@ abstract class LookupController extends Controller
 
         $item->delete();
 
-        return redirect()->route($this->routePrefix().'.index')
+        return redirect()->route($this->routePrefix().'.index', $this->indexParams($item))
             ->with('status', $this->labels()['singular'].' устгагдлаа.');
     }
 
@@ -162,7 +176,7 @@ abstract class LookupController extends Controller
         ];
     }
 
-    private function selectOptions(Model $item): array
+    protected function selectOptions(Model $item): array
     {
         $options = [];
 
@@ -175,7 +189,7 @@ abstract class LookupController extends Controller
         return $options;
     }
 
-    private function viewData(): array
+    protected function viewData(): array
     {
         return [
             'labels' => $this->labels(),

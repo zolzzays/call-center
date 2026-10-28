@@ -21,7 +21,7 @@ class TicketAssigned extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $ticket = $this->ticket->loadMissing(['user.department', 'repairType', 'repairCategory']);
+        $ticket = $this->ticket->loadMissing(['user.department', 'repairType', 'repairCategory', 'assignee', 'coAssignee']);
 
         $category = $ticket->repairType?->name
             .($ticket->repairCategory ? ' / '.$ticket->repairCategory->name : '');
@@ -34,9 +34,9 @@ class TicketAssigned extends Notification
             ->line("**Төрөл:** {$ticket->typeLabel()}")
             ->line("**Ангилал:** {$category}")
             ->line("**Яаралтай байдал:** {$ticket->urgencyLabel()}")
-            ->line('**Хүссэн хугацаа:** '.($ticket->due_at?->format('Y-m-d H:i') ?? 'Заагаагүй'))
             ->line('**Илгээгч:** '.$ticket->user?->name.($ticket->user?->department ? ' ('.$ticket->user->department->name.')' : ''))
             ->line('**Тайлбар:** '.\Illuminate\Support\Str::limit($ticket->description, 500))
+            ->lineIf($ticket->co_assignee_id !== null, '**Гүйцэтгэгчид:** '.$ticket->assigneeNames().' (хамтран хариуцна)')
             ->action('Дуудлагыг харах', route('tickets.show', $ticket))
             ->salutation('Диспетчерийн үндэсний төв');
     }

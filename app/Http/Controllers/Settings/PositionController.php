@@ -39,6 +39,16 @@ class PositionController extends LookupController
                     ->pluck('name', 'id'),
             ],
             'name' => ['label' => 'Нэр', 'type' => 'text', 'list' => true],
+            'access_role' => [
+                'label' => 'МАБ батлах үүрэг',
+                'type' => 'select',
+                'list' => true,
+                'required' => false,
+                'placeholder' => '— Үүрэггүй —',
+                'display' => 'access_role_label',
+                'hint' => 'Энэ албан тушаалтай хүн МАБ-ын хандах эрхийн хүсэлтийг тухайн шатанд автоматаар хүлээн авч батална.',
+                'options' => fn (?Model $item) => collect(Position::ACCESS_ROLES),
+            ],
             'description' => ['label' => 'Тайлбар', 'type' => 'textarea', 'list' => true],
             'is_active' => ['label' => 'Идэвхтэй', 'type' => 'checkbox', 'list' => true],
         ];
@@ -54,6 +64,7 @@ class PositionController extends LookupController
                     ->where('department_id', request()->integer('department_id'))
                     ->ignore($item),
             ],
+            'access_role' => ['nullable', Rule::in(array_keys(Position::ACCESS_ROLES))],
             'description' => ['nullable', 'string', 'max:1000'],
         ];
     }

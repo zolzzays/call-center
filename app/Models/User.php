@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -56,6 +57,31 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * МАБ: ажлаас гарсан (идэвхгүй болсон) эсвэл өөр алба, хэлтэс рүү шилжсэн үед
+     * олгосон хандах эрхийг шууд түдгэлзүүлж, аудит логт тэмдэглэнэ.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (User $user) {
+            $reason = match (true) {
+                $user->wasChanged('is_active') && ! $user->is_active => AccessRequest::REVOKE_REASONS['left'].' (хэрэглэгч идэвхгүй болсон)',
+                $user->wasChanged('department_id') => AccessRequest::REVOKE_REASONS['transferred'],
+                default => null,
+            };
+
+            if ($reason) {
+                AccessRequest::where('user_id', $user->id)->where('status', 'granted')->get()
+                    ->each(fn (AccessRequest $r) => $r->revoke(null, $reason.' · автоматаар'));
+            }
+        });
+    }
+
+    public function accessRequests(): HasMany
+    {
+        return $this->hasMany(AccessRequest::class);
+    }
+
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
@@ -86,11 +112,13 @@ class User extends Authenticatable
         return $this->hasRole(Role::ASSIGNEE);
     }
 
-    /** Идэвхтэй гүйцэтгэгчид. $includeId-г идэвхгүй болсон ч жагсаалтад үлдээнэ. */
-    public function scopeAssignees(Builder $query, ?int $includeId = null): Builder
+    /** Идэвхтэй гүйцэтгэгчид. $includeIds-д байгааг идэвхгүй болсон ч жагсаалтад үлдээнэ. */
+    public function scopeAssignees(Builder $query, ?int ...$includeIds): Builder
     {
+        $includeIds = array_filter($includeIds);
+
         return $query->whereHas('role', fn ($q) => $q->where('slug', Role::ASSIGNEE))
-            ->where(fn ($q) => $q->where('is_active', true)->when($includeId, fn ($q) => $q->orWhere('id', $includeId)));
+            ->where(fn ($q) => $q->where('is_active', true)->when($includeIds, fn ($q) => $q->orWhereIn('id', $includeIds)));
     }
 
     /**

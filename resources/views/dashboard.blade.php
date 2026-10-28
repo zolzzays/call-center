@@ -34,9 +34,8 @@
 
     /* Картын сүлжээ */
     .row { display: grid; gap: 14px; margin-bottom: 14px; }
-    .row-4 { grid-template-columns: 1.15fr 1.35fr .85fr 1.15fr; }
-    .row-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-    .row-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); }
+    .row-3 { grid-template-columns: 1.15fr 1.35fr .85fr; }
+    .row-3e { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .tile {
         background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--card-radius);
         box-shadow: var(--card-shadow); padding: 16px 16px 14px; min-width: 0; display: flex; flex-direction: column;
@@ -89,19 +88,6 @@
     .type-icons { display: flex; gap: 2px; }
     .type-icons svg { width: 22px; height: 22px; }
 
-    /* Хоёр талт (идэвхтэй ← → хаасан) */
-    .bfly-head { display: grid; grid-template-columns: 1fr 96px 1fr; font-size: 12px; color: var(--ink-3); text-align: center; margin-bottom: 8px; }
-    .bfly { display: grid; gap: 8px; }
-    .bfly-row { display: grid; grid-template-columns: 1fr 96px 1fr; align-items: center; outline: none; text-decoration: none; }
-    .bfly-row:focus-visible { box-shadow: 0 0 0 2px var(--ink); border-radius: 4px; }
-    .bfly-side { display: flex; align-items: center; gap: 6px; height: 18px; }
-    .bfly-side.left { flex-direction: row-reverse; }
-    .bfly-bar { height: 100%; min-width: 2px; }
-    .bfly-side.left .bfly-bar { border-radius: 3px 0 0 3px; }
-    .bfly-side.right .bfly-bar { border-radius: 0 3px 3px 0; }
-    .bfly-side small { font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-    .bfly-mid { font-size: 12px; font-weight: 700; color: var(--ink-2); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
-
     /* Босоо баганууд */
     .cols-chart { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; height: calc(var(--h) + 22px); }
     .cols-axis { display: flex; flex-direction: column; justify-content: space-between; height: var(--h); font-size: 11px; color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
@@ -125,7 +111,6 @@
     .sbox-value.warn { color: #ea8a00; }
     .sbox-value.good { color: #16a34a; }
     .sbox-value.bad { color: var(--c-red); }
-    .risk { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; align-items: start; }
     .mini-title { font-size: 11px; font-weight: 700; color: var(--ink-2); text-transform: uppercase; letter-spacing: .03em; text-align: center; margin: 0 0 12px; }
 
     /* Өмнөх үетэй харьцуулалт (багана + цэг) */
@@ -143,7 +128,7 @@
     .hb-mark { position: absolute; top: 50%; width: 9px; height: 9px; margin-left: -4.5px; transform: translateY(-50%); border-radius: 50%; background: var(--c-orange); box-shadow: 0 0 0 2px #fff; pointer-events: none; }
     .hbs { display: grid; gap: 9px; }
 
-    /* Сүүлийн дуудлагууд */
+    /* Сүүлийн хүсэлтүүд */
     .table-tile { padding: 0; overflow: hidden; }
     .table-tile .tile-head { padding: 16px 16px 0; }
     .table-tile .table-wrap { margin-top: 0; }
@@ -164,14 +149,11 @@
     .tip span { display: block; color: rgba(255, 255, 255, .78); }
 
     @media (max-width: 1500px) {
-        .row-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .row-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .row-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
-    @media (max-width: 1100px) { .row-2 { grid-template-columns: 1fr; } }
     @media (max-width: 760px) {
-        .row-4, .row-6, .cmp-grid { grid-template-columns: 1fr; }
+        .row-3, .row-3e, .cmp-grid { grid-template-columns: 1fr; }
         .stat-boxes.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .risk { grid-template-columns: 1fr; }
         .period-bar { margin-left: 0; width: 100%; }
         .step-label { min-width: 0; flex: 1; }
     }
@@ -182,8 +164,8 @@
     $me = auth()->user();
     $isAdmin = $me->isAdmin();
     $isAssignee = $me->isAssignee();
-    $scopeText = $isAdmin ? 'Бүх дуудлага, хүсэлтийн нэгдсэн үзүүлэлт'
-        : ($isAssignee ? 'Танд ирсэн дуудлагын үзүүлэлт' : 'Таны илгээсэн дуудлагын үзүүлэлт');
+    $scopeText = $isAdmin ? 'Бүх хүсэлтийн нэгдсэн үзүүлэлт'
+        : ($isAssignee ? 'Танд ирсэн хүсэлтийн үзүүлэлт' : 'Таны илгээсэн хүсэлтийн үзүүлэлт');
     $showSender = ! $me->canSubmitTickets();
     $showAssignee = ! $isAssignee;
     $total = $stats['total'];
@@ -198,9 +180,7 @@
     $colorize = fn (array $rows) => array_map(fn ($r, $i) => $r + ['color' => $r['label'] === 'Бусад' ? 'var(--c-gray)' : $palette[$i % count($palette)]], $rows, array_keys($rows));
 
     $systemItems = $colorize($systems);
-    $statusColors = ['new' => 'var(--c-blue)', 'assigned' => 'var(--c-purple)', 'postponed' => 'var(--c-orange)', 'closed' => 'var(--c-teal)'];
-    $urgencyColors = ['normal' => 'var(--c-blue)', 'urgent' => 'var(--c-orange)', 'critical' => 'var(--c-red)'];
-    $bflyMax = max(1, max(array_merge(array_column($urgencies, 'open'), array_column($urgencies, 'closed'))));
+    $statusColors = ['new' => 'var(--c-blue)', 'assigned' => 'var(--c-purple)', 'postponed' => 'var(--c-orange)', 'returned' => 'var(--c-red)', 'closed' => 'var(--c-teal)'];
 @endphp
 
 <div class="dash">
@@ -235,7 +215,7 @@
             @endif
         </div>
         <div class="form-actions" style="margin:0">
-            <a href="{{ $list() }}" class="btn btn-ghost">{{ $isAdmin ? 'Бүх дуудлага' : ($isAssignee ? 'Ирсэн хүсэлт' : 'Миний дуудлага') }}</a>
+            <a href="{{ $list() }}" class="btn btn-ghost">{{ $isAdmin ? 'Бүх хүсэлт' : ($isAssignee ? 'Ирсэн хүсэлт' : 'Миний хүсэлтүүд') }}</a>
             @if ($me->canSubmitTickets())
                 <a href="{{ route('tickets.create') }}" class="btn">+ Хүсэлт илгээх</a>
             @endif
@@ -243,9 +223,9 @@
     </div>
 
     {{-- 1-р мөр --}}
-    <div class="row row-4">
+    <div class="row row-3">
         <section class="tile">
-            <div class="tile-head"><h3 class="tile-title">Дуудлага ангиллаар<span class="tile-sub">Эхний 5</span></h3></div>
+            <div class="tile-head"><h3 class="tile-title">Хүсэлт ангиллаар<span class="tile-sub">Эхний 5</span></h3></div>
             <div class="tile-body">
                 <x-dash.hbars :rows="array_map(fn ($c) => ['label' => $c['label'], 'value' => $c['total']], array_slice($categories, 0, 5))" label="Ангиллаар" />
             </div>
@@ -295,27 +275,10 @@
                 </div>
             </div>
         </section>
-
-        <section class="tile">
-            <div class="tile-head"><h3 class="tile-title">Яаралтай байдал × төлөв<span class="tile-sub">Идэвхтэй ба хаасан</span></h3></div>
-            <div class="tile-body">
-                <div class="bfly-head"><span>Идэвхтэй</span><span></span><span>Хаасан</span></div>
-                <div class="bfly" role="list" aria-label="Яаралтай байдлаар идэвхтэй ба хаасан">
-                    @foreach (array_reverse($urgencies, true) as $key => $u)
-                        <a href="{{ $list(['urgency' => $key]) }}" class="bfly-row" role="listitem"
-                           data-tip="{{ $u['label'] }}|Идэвхтэй {{ $u['open'] }} · Хаасан {{ $u['closed'] }}|Нийт {{ $u['total'] }} · {{ $u['percent'] }}%">
-                            <span class="bfly-side left"><span class="bfly-bar" style="width: {{ $u['open'] / $bflyMax * 82 }}%; background: var(--c-blue)"></span><small>{{ $u['open'] }}</small></span>
-                            <span class="bfly-mid">{{ $u['label'] }}</span>
-                            <span class="bfly-side right"><span class="bfly-bar" style="width: {{ $u['closed'] / $bflyMax * 82 }}%; background: var(--c-teal)"></span><small>{{ $u['closed'] }}</small></span>
-                        </a>
-                    @endforeach
-                </div>
-            </div>
-        </section>
     </div>
 
     {{-- 2-р мөр --}}
-    <div class="row row-6">
+    <div class="row row-3e">
         <section class="tile">
             <div class="tile-head"><h3 class="tile-title">Гүйцэтгэгчээр</h3></div>
             <div class="tile-body"><x-dash.hbars :rows="$assignees" label="Гүйцэтгэгчээр" /></div>
@@ -340,54 +303,13 @@
                 </div>
             </div>
         </section>
-
-        <section class="tile">
-            <div class="tile-head"><h3 class="tile-title">Яаралтай байдлаар</h3></div>
-            <div class="tile-body">
-                @php $urgencyItems = array_map(fn ($k) => ['label' => $urgencies[$k]['label'], 'value' => $urgencies[$k]['total'], 'color' => $urgencyColors[$k]], array_keys($urgencies)); @endphp
-                <div class="donut-row">
-                    <x-dash.donut :items="$urgencyItems" :size="112" :stroke="16" label="Яаралтай байдлаар" />
-                    <div class="legend">
-                        @foreach ($urgencyItems as $it)
-                            <div class="lg"><i style="background: {{ $it['color'] }}"></i><span>{{ $it['label'] }}</span><b>{{ $it['value'] }}</b></div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="tile">
-            <div class="tile-head"><h3 class="tile-title">Алба, хэлтсээр</h3></div>
-            <div class="tile-body"><x-dash.hbars :rows="$departments" :thin="true" label="Алба, хэлтсээр" /></div>
-        </section>
-
-        <section class="tile">
-            <div class="tile-head"><h3 class="tile-title">Нээлттэй хоног<span class="tile-sub">Идэвхтэй дуудлага</span></h3></div>
-            <div class="tile-body"><x-dash.columns :rows="$daysOpen" :height="130" label="Нээлттэй хоног" /></div>
-        </section>
     </div>
 
     {{-- 3-р мөр --}}
-    <div class="row row-2">
-        <section class="tile">
-            <div class="tile-head"><h3 class="tile-title">Хугацааны эрсдэл</h3></div>
-            <div class="risk">
-                <div class="stat-boxes">
-                    <a href="{{ $openList() }}" class="sbox"><span class="sbox-label">Хугацаа хэтэрсэн</span><span class="sbox-value {{ $risk['overdue'] ? 'warn' : '' }}">{{ number_format($risk['overdue']) }}</span></a>
-                    <a href="{{ $openList() }}" class="sbox"><span class="sbox-label">24 цагт дуусах</span><span class="sbox-value">{{ number_format($risk['due_today']) }}</span></a>
-                    <a href="{{ $openList(['status' => 'postponed']) }}" class="sbox"><span class="sbox-label">Хойшлуулсан</span><span class="sbox-value">{{ number_format($risk['postponed']) }}</span></a>
-                    <a href="{{ $openList() }}" class="sbox"><span class="sbox-label">Хуваарилаагүй</span><span class="sbox-value">{{ number_format($stats['unassigned']) }}</span></a>
-                </div>
-                <div>
-                    <p class="mini-title">Сараар ирсэн хүсэлт</p>
-                    <x-dash.columns :rows="$monthly" color="var(--c-orange)" :height="170" label="Сараар ирсэн хүсэлт" />
-                </div>
-            </div>
-        </section>
-
+    <div class="row">
         <section class="tile">
             <div class="tile-head">
-                <h3 class="tile-title">Дуудлагын хөдөлгөөн<span class="tile-sub">{{ $curLabel }} · {{ mb_strtolower($prevLabel) }}</span></h3>
+                <h3 class="tile-title"><span class="tile-sub" style="margin-top: 0">{{ $curLabel }} · {{ mb_strtolower($prevLabel) }}</span></h3>
                 <div class="cmp-legend" aria-hidden="true"><span><i></i>{{ $curLabel }}</span><span><i class="dot"></i>{{ $prevLabel }}</span></div>
             </div>
             <div class="stat-boxes four">
@@ -425,10 +347,10 @@
         </section>
     </div>
 
-    {{-- Сүүлийн дуудлагууд --}}
+    {{-- Сүүлийн хүсэлтүүд --}}
     <section class="tile table-tile">
         <div class="tile-head">
-            <h3 class="tile-title">Сүүлийн дуудлагууд</h3>
+            <h3 class="tile-title">Сүүлийн хүсэлтүүд</h3>
             <a href="{{ $list() }}" class="tile-link" style="margin:0;padding:0">Бүгдийг харах →</a>
         </div>
         <div class="table-wrap">
@@ -437,7 +359,7 @@
                     <tr>
                         <th>Дугаар</th>
                         <th>Ангилал / Систем</th>
-                        <th>Яаралтай байдал</th>
+                        <th>Төрөл</th>
                         @if ($showSender) <th>Илгээгч</th> @endif
                         @if ($showAssignee) <th>Гүйцэтгэгч</th> @endif
                         <th>Төлөв</th>
@@ -457,7 +379,7 @@
                             @if ($showAssignee)
                                 <td>
                                     @if ($ticket->assignee)
-                                        {{ $ticket->assignee->name }}
+                                        {{ $ticket->assigneeDisplay() }}
                                     @else
                                         <span class="sub" style="margin:0">Хуваарилаагүй</span>
                                     @endif

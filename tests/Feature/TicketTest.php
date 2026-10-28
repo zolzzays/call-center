@@ -7,6 +7,7 @@ use App\Models\RepairType;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Notifications\TicketAssigned;
+use App\Notifications\TicketResubmitted;
 use App\Notifications\TicketStatusChanged;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -39,7 +40,6 @@ class TicketTest extends TestCase
             'repair_category_id' => $this->system->id,
             'description' => 'Нэвтрэх үед 500 алдаа гарч байна.',
             'urgency' => 'urgent',
-            'due_at' => now()->addDay()->format('Y-m-d\TH:i'),
         ];
     }
 
@@ -52,6 +52,43 @@ class TicketTest extends TestCase
             ->assertSee('Програм хангамж')
             ->assertSee('dis.energy.mn')
             ->assertSee('Нэн яаралтай');
+    }
+
+    public function test_submission_date_is_filled_automatically(): void
+    {
+        $this->travelTo(now()->setDate(2026, 10, 26)->setTime(9, 15));
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('/tickets/create')
+            ->assertSee('Илгээх огноо')
+            ->assertSee('value="2026-10-26 09:15" readonly', false)
+            ->assertDontSee('Хүссэн хугацаа')
+            ->assertDontSee('name="due_at"', false);
+
+        // Маягтаас ирсэн огноог үл тооцож серверийн цагаар бүртгэнэ
+        $this->travel(3)->minutes();
+        $this->actingAs($user)->post('/tickets', $this->payload([
+            'sent_at' => '2020-01-01 00:00', 'created_at' => '2020-01-01 00:00', 'due_at' => '2026-12-01T10:00',
+        ]))->assertSessionHasNoErrors();
+
+        $ticket = Ticket::firstOrFail();
+        $this->assertSame('2026-10-26 09:18', $ticket->created_at->format('Y-m-d H:i'));
+        // Хүссэн хугацааг маягтаас хассан тул илгээсэн ч хадгалахгүй
+        $this->assertNull($ticket->due_at);
+    }
+
+    public function test_submit_link_is_on_my_requests_page_not_in_menu(): void
+    {
+        $user = User::factory()->create();
+        $create = route('tickets.create');
+
+        $this->actingAs($user)->get('/tickets')
+            ->assertSee('<a href="'.$create.'" class="btn">+ Хүсэлт илгээх</a>', false)
+            ->assertDontSee('href="'.$create.'" class="nav-item', false);
+
+        // Маягт дээр байхад «Миний хүсэлтүүд» цэс идэвхтэй
+        $this->actingAs($user)->get('/tickets/create')
+            ->assertSee('href="'.route('tickets.index').'" class="nav-item active"', false);
     }
 
     public function test_user_submits_ticket_with_files_and_gets_number(): void
@@ -114,9 +151,6 @@ class TicketTest extends TestCase
         // Өөр ангиллын систем сонгож болохгүй
         $this->actingAs($user)->post('/tickets', $this->payload(['repair_category_id' => $otherSystem->id]))
             ->assertSessionHasErrors('repair_category_id');
-
-        $this->actingAs($user)->post('/tickets', $this->payload(['due_at' => now()->subDay()->format('Y-m-d\TH:i')]))
-            ->assertSessionHasErrors('due_at');
 
         $this->actingAs($user)->post('/tickets', $this->payload(['urgency' => 'asap']))
             ->assertSessionHasErrors('urgency');
@@ -323,6 +357,151 @@ class TicketTest extends TestCase
         $this->assertNull($this->system->fresh()->assignee_id);
     }
 
+    public function test_category_with_two_assignees_shares_ticket(): void
+    {
+        Notification::fake();
+        $bat = User::factory()->assignee()->create(['name' => 'Инженер Бат', 'email' => 'bat@example.mn']);
+        $dorj = User::factory()->assignee()->create(['name' => 'Инженер Дорж', 'email' => 'dorj@example.mn']);
+        $other = User::factory()->assignee()->create();
+        $this->system->update(['assignee_id' => $bat->id, 'co_assignee_id' => $dorj->id]);
+
+        $this->actingAs(User::factory()->create())->get('/tickets/create')->assertSee('Инженер Бат, Инженер Дорж');
+
+        $reporter = User::factory()->create(['email' => 'reporter@example.mn']);
+        $this->actingAs($reporter)->post('/tickets', $this->payload())
+            ->assertSessionHas('status', fn ($m) => str_contains($m, 'Гүйцэтгэгч: Инженер Бат, Инженер Дорж.'));
+
+        $ticket = Ticket::firstOrFail();
+        $this->assertSame([$bat->id, $dorj->id], [$ticket->assignee_id, $ticket->co_assignee_id]);
+
+        // Хоёуланд нь мэйл очно
+        Notification::assertSentTo($bat, TicketAssigned::class);
+        Notification::assertSentTo($dorj, TicketAssigned::class);
+        Notification::assertNotSentTo($other, TicketAssigned::class);
+
+        // Хоёулаа «Ирсэн хүсэлт»-дээ харж, нээж чадна; бусад гүйцэтгэгч харахгүй
+        foreach ([$bat, $dorj] as $engineer) {
+            $this->actingAs($engineer)->get('/tickets')->assertSee($ticket->number);
+            $this->actingAs($engineer)->get("/tickets/{$ticket->id}")->assertOk()->assertSee('Инженер Бат, Инженер Дорж');
+        }
+        $this->actingAs($other)->get('/tickets')->assertDontSee($ticket->number);
+        $this->actingAs($other)->get("/tickets/{$ticket->id}")->assertForbidden();
+
+        // Хамтран гүйцэтгэгч хойшлуулж, хааж чадна
+        $this->actingAs($dorj)->put("/tickets/{$ticket->id}/postpone", [
+            'postponed_until' => now()->addDays(2)->format('Y-m-d\TH:i'),
+            'reason' => 'Сэлбэг хүлээж байна.',
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($dorj)->put("/tickets/{$ticket->id}/close", ['resolution' => 'Сервер дахин ачаалсан.'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('closed', $ticket->fresh()->status);
+
+        // Хаасан гүйцэтгэгчийн нэр гарна
+        Notification::assertSentTo($reporter, TicketStatusChanged::class, function (TicketStatusChanged $n) use ($reporter) {
+            return collect($n->toMail($reporter)->introLines)->contains('**Гүйцэтгэгч:** Инженер Дорж');
+        });
+        $this->assertSame($dorj->id, $ticket->fresh()->handled_by_id);
+        $this->actingAs($reporter)->get('/tickets?status=all')->assertSee('Инженер Дорж')->assertDontSee('Инженер Бат, Инженер Дорж');
+        $this->actingAs($reporter)->get("/tickets/{$ticket->id}")->assertSee('Хуваарилсан: Инженер Бат, Инженер Дорж');
+    }
+
+    public function test_handler_is_the_assignee_who_acted_last(): void
+    {
+        Notification::fake();
+        $admin = User::factory()->admin()->create();
+        $bat = User::factory()->assignee()->create(['name' => 'Инженер Бат']);
+        $dorj = User::factory()->assignee()->create(['name' => 'Инженер Дорж']);
+        $this->system->update(['assignee_id' => $bat->id, 'co_assignee_id' => $dorj->id]);
+        $reporter = User::factory()->create();
+        $this->actingAs($reporter)->post('/tickets', $this->payload());
+        $ticket = Ticket::firstOrFail();
+
+        // Хуваарилагдсан даруйд хоёр нэр
+        $this->assertSame('Инженер Бат, Инженер Дорж', $ticket->fresh()->assigneeDisplay());
+
+        // Бат хойшлуулбал Бат, Дорж буцаавал Дорж
+        $this->actingAs($bat)->put("/tickets/{$ticket->id}/postpone", [
+            'postponed_until' => now()->addDay()->format('Y-m-d\TH:i'), 'reason' => 'Сэлбэг хүлээнэ.',
+        ]);
+        $this->assertSame('Инженер Бат', $ticket->fresh()->assigneeDisplay());
+
+        $this->actingAs($dorj)->put("/tickets/{$ticket->id}/return", ['return_reason' => 'Зураг хавсаргана уу.']);
+        $this->assertSame('Инженер Дорж', $ticket->fresh()->assigneeDisplay());
+        Notification::assertSentTo($reporter, TicketStatusChanged::class, fn (TicketStatusChanged $n) => $n->ticket->isReturned()
+            && collect($n->toMail($reporter)->introLines)->contains('**Гүйцэтгэгч:** Инженер Дорж'));
+
+        // Админ хойшлуулбал гүйцэтгэгчийн нэр өөрчлөгдөхгүй
+        $this->actingAs($reporter)->put("/tickets/{$ticket->id}/resubmit", ['clarification' => 'Хавсаргалаа.']);
+        $this->actingAs($admin)->put("/tickets/{$ticket->id}/postpone", [
+            'postponed_until' => now()->addDay()->format('Y-m-d\TH:i'), 'reason' => 'Админ хойшлуулав.',
+        ]);
+        $this->assertSame($dorj->id, $ticket->fresh()->handled_by_id);
+
+        // Гүйцэтгэлийг бичиж хаасан хүний нэр (админ ч байсан) «Миний хүсэлтүүд»-д гарна
+        $admin->update(['name' => 'Админ Сараа']);
+        $this->actingAs($admin)->put("/tickets/{$ticket->id}/close", ['resolution' => 'Админ хаав.']);
+        $this->assertSame($admin->id, $ticket->fresh()->handled_by_id);
+        $this->actingAs($reporter)->get('/tickets?status=closed')->assertSee('Админ Сараа');
+    }
+
+    public function test_reassigning_clears_handler(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$ticket, , $engineer] = $this->assignedTicket();
+        $other = User::factory()->assignee()->create(['name' => 'Инженер Сүх']);
+
+        $this->actingAs($engineer)->put("/tickets/{$ticket->id}/postpone", [
+            'postponed_until' => now()->addDay()->format('Y-m-d\TH:i'), 'reason' => 'Хүлээнэ.',
+        ]);
+        $this->assertSame($engineer->id, $ticket->fresh()->handled_by_id);
+
+        $this->actingAs($admin)->put("/tickets/{$ticket->id}/assign", ['assignee_id' => $other->id]);
+        $this->assertNull($ticket->fresh()->handled_by_id);
+        $this->assertSame('Инженер Сүх', $ticket->fresh()->assigneeDisplay());
+    }
+
+    public function test_inactive_main_assignee_falls_back_to_co_assignee(): void
+    {
+        $inactive = User::factory()->assignee()->create(['is_active' => false]);
+        $dorj = User::factory()->assignee()->create();
+        $this->system->update(['assignee_id' => $inactive->id, 'co_assignee_id' => $dorj->id]);
+
+        $this->actingAs(User::factory()->create())->post('/tickets', $this->payload());
+
+        $ticket = Ticket::firstOrFail();
+        $this->assertSame([$dorj->id, null], [$ticket->assignee_id, $ticket->co_assignee_id]);
+    }
+
+    public function test_admin_assigns_two_assignees_manually_and_in_settings(): void
+    {
+        Notification::fake();
+        $admin = User::factory()->admin()->create();
+        $bat = User::factory()->assignee()->create(['name' => 'Инженер Бат']);
+        $dorj = User::factory()->assignee()->create(['name' => 'Инженер Дорж']);
+        $this->actingAs(User::factory()->create())->post('/tickets', $this->payload());
+        $ticket = Ticket::firstOrFail();
+
+        $this->actingAs($admin)->put("/tickets/{$ticket->id}/assign", ['assignee_id' => $bat->id, 'co_assignee_id' => $bat->id])
+            ->assertSessionHasErrors('co_assignee_id');
+
+        $this->actingAs($admin)->put("/tickets/{$ticket->id}/assign", ['assignee_id' => $bat->id, 'co_assignee_id' => $dorj->id])
+            ->assertSessionHas('status', fn ($m) => str_contains($m, 'Инженер Бат, Инженер Дорж-д хуваариллаа'));
+        Notification::assertSentTo([$bat, $dorj], TicketAssigned::class);
+
+        // Хамтран гүйцэтгэгчгүйгээр дахин хуваарилбал хасагдана
+        $this->actingAs($admin)->put("/tickets/{$ticket->id}/assign", ['assignee_id' => $dorj->id, 'co_assignee_id' => '']);
+        $this->assertSame([$dorj->id, null], [$ticket->fresh()->assignee_id, $ticket->fresh()->co_assignee_id]);
+
+        // Тохиргоонд ангилалд хоёр гүйцэтгэгч оноох
+        $base = ['repair_type_id' => $this->software->id, 'name' => $this->system->name, 'is_active' => '1', 'assignee_id' => $bat->id];
+        $this->actingAs($admin)->put("/settings/repair-categories/{$this->system->id}", $base + ['co_assignee_id' => $bat->id])
+            ->assertSessionHasErrors('co_assignee_id');
+        $this->actingAs($admin)->put("/settings/repair-categories/{$this->system->id}", $base + ['co_assignee_id' => $dorj->id])
+            ->assertSessionHasNoErrors();
+        $this->assertSame($dorj->id, $this->system->fresh()->co_assignee_id);
+        $this->actingAs($admin)->get('/settings/repair-categories')->assertSee('Хамтран гүйцэтгэгч')->assertSee('Инженер Дорж');
+    }
+
     /** Илгээгч + гүйцэтгэгчтэй хуваарилагдсан дуудлага үүсгэнэ */
     private function assignedTicket(): array
     {
@@ -336,14 +515,118 @@ class TicketTest extends TestCase
         return [Ticket::firstOrFail(), $reporter, $engineer];
     }
 
+    public function test_description_is_right_below_ticket_number(): void
+    {
+        [$ticket, $reporter, $engineer] = $this->assignedTicket();
+        $this->actingAs($engineer)->put("/tickets/{$ticket->id}/postpone", [
+            'postponed_until' => now()->addDay()->format('Y-m-d\TH:i'), 'reason' => 'Сэлбэг хүлээнэ.',
+        ]);
+
+        // Хүсэлтийн дугаар → тайлбар → хойшлуулсан мэдэгдэл (илгээгч, гүйцэтгэгч хоёуланд)
+        foreach ([$reporter, $engineer] as $user) {
+            $html = $this->actingAs($user)->get("/tickets/{$ticket->id}")
+                ->assertSeeInOrder(['Хүсэлтийн дугаар', '№'.$ticket->number, 'Гэмтэл, хүсэлтийн тайлбар', $ticket->description, 'хүртэл хойшлуулсан'])
+                ->getContent();
+            $this->assertSame(1, substr_count($html, 'Гэмтэл, хүсэлтийн тайлбар'));
+        }
+    }
+
+    public function test_assignee_returns_ticket_and_reporter_resubmits(): void
+    {
+        Notification::fake();
+        [$ticket, $reporter, $engineer] = $this->assignedTicket();
+
+        // Гурван үйлдэл: хаах, хойшлуулах, буцаах
+        $this->actingAs($engineer)->get("/tickets/{$ticket->id}")
+            ->assertSeeInOrder(['Хаах', 'Хойшлуулах', 'Буцаах']);
+
+        $this->actingAs($engineer)->put("/tickets/{$ticket->id}/return", ['return_reason' => ''])
+            ->assertSessionHasErrors('return_reason');
+
+        $this->actingAs($engineer)->put("/tickets/{$ticket->id}/return", ['return_reason' => 'Алдааны зургийг хавсаргана уу.'])
+            ->assertSessionHasNoErrors();
+
+        $ticket->refresh();
+        $this->assertSame('returned', $ticket->status);
+        $this->assertSame('Буцаасан', $ticket->statusLabel());
+        $this->assertSame($engineer->id, $ticket->assignee_id);
+
+        Notification::assertSentTo($reporter, TicketStatusChanged::class, function (TicketStatusChanged $n) use ($reporter) {
+            $mail = $n->toMail($reporter);
+
+            return str_contains($mail->subject, 'тодруулга авахаар танд буцаагдлаа')
+                && collect($mail->introLines)->contains('**Шалтгаан:** Алдааны зургийг хавсаргана уу.');
+        });
+
+        // Буцаасан хүсэлт нээлттэй хэвээр; гүйцэтгэгчид «Хүсэлт гүйцэтгэх» гарахгүй, «Буцаасан» гэж харагдана
+        $this->assertContains('returned', Ticket::OPEN_STATUSES);
+        $this->actingAs($engineer)->get("/tickets/{$ticket->id}")
+            ->assertDontSee('Хүсэлт гүйцэтгэх')
+            ->assertDontSee('id="pane-close"', false)
+            ->assertSee('Илгээгчийн тодруулгыг хүлээж байна');
+
+        // Тодруулга ирэх хүртэл хаах, хойшлуулах, дахин буцаах боломжгүй
+        $this->actingAs($engineer)->put("/tickets/{$ticket->id}/return", ['return_reason' => 'Дахин'])->assertForbidden();
+        $this->actingAs($engineer)->put("/tickets/{$ticket->id}/close", ['resolution' => 'Хаав'])->assertForbidden();
+        $this->actingAs($engineer)->put("/tickets/{$ticket->id}/postpone", [
+            'postponed_until' => now()->addDay()->format('Y-m-d\TH:i'), 'reason' => 'x',
+        ])->assertForbidden();
+
+        // Илгээгч шалтгааныг харж тодруулна; бусад хүн дахин илгээж чадахгүй
+        $this->actingAs($reporter)->get("/tickets/{$ticket->id}")
+            ->assertSee('Тодруулга авахаар танд буцаасан')
+            ->assertSee('Алдааны зургийг хавсаргана уу.')
+            ->assertSee('Дахин илгээх');
+        $this->actingAs($engineer)->put("/tickets/{$ticket->id}/resubmit", ['clarification' => 'x'])->assertForbidden();
+
+        $this->actingAs($reporter)->put("/tickets/{$ticket->id}/resubmit", ['clarification' => 'Зургийг хавсаргалаа, 3-р давхрын компьютер.'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('assigned', $ticket->fresh()->status);
+        Notification::assertSentTo($engineer, TicketResubmitted::class, function (TicketResubmitted $n) use ($engineer) {
+            return collect($n->toMail($engineer)->introLines)->contains('**Тодруулга:** Зургийг хавсаргалаа, 3-р давхрын компьютер.');
+        });
+
+        // Тодруулга ирсний дараа дахин гүйцэтгэх боломжтой; явцад буцаасан, дахин илгээсэн нь харагдана
+        $this->actingAs($engineer)->get("/tickets/{$ticket->id}")
+            ->assertSee('Хүсэлт гүйцэтгэх')
+            ->assertSeeInOrder(['Илгээгчид буцаасан', 'Тодруулж дахин илгээсэн']);
+    }
+
+    public function test_my_requests_shows_returned_tickets_to_reporter(): void
+    {
+        [$ticket, $reporter, $engineer] = $this->assignedTicket();
+
+        $this->actingAs($reporter)->get('/tickets')->assertDontSee('гүйцэтгэгч буцаасан байна');
+
+        $this->actingAs($engineer)->put("/tickets/{$ticket->id}/return", ['return_reason' => 'Зураг хавсаргана уу.']);
+
+        // Жагсаалтын дээр мэдэгдэл, мөрөнд «Тодруулга шаардлагатай», «Буцаасан» таб
+        $this->actingAs($reporter)->get('/tickets')
+            ->assertSee('Таны 1 хүсэлтийг гүйцэтгэгч буцаасан байна.')
+            ->assertSee('Тодруулга шаардлагатай')
+            ->assertSee('Буцаасан');
+
+        $this->actingAs($reporter)->get('/tickets?status=returned')->assertOk()->assertSee($ticket->number);
+        $this->assertSame(1, $this->actingAs($reporter)->get('/tickets?status=returned')->viewData('tickets')->total());
+
+        // Гүйцэтгэгчид илгээгчийн мэдэгдэл гарахгүй
+        $this->actingAs($engineer)->get('/tickets')->assertDontSee('гүйцэтгэгч буцаасан байна')->assertDontSee('Тодруулга шаардлагатай');
+
+        // Дахин илгээсний дараа мэдэгдэл алга болно
+        $this->actingAs($reporter)->put("/tickets/{$ticket->id}/resubmit", ['clarification' => 'Хавсаргалаа.']);
+        $this->actingAs($reporter)->get('/tickets')->assertDontSee('гүйцэтгэгч буцаасан байна');
+    }
+
     public function test_assignee_closes_ticket_and_reporter_is_notified(): void
     {
         Notification::fake();
         [$ticket, $reporter, $engineer] = $this->assignedTicket();
 
+        // Гүйцэтгэгч эхлээд гэмтлийн тайлбарыг уншаад, доор нь гүйцэтгэх хэсгийг харна
         $this->actingAs($engineer)->get("/tickets/{$ticket->id}")
             ->assertOk()
-            ->assertSee('Дуудлагыг гүйцэтгэх');
+            ->assertSeeInOrder(['Гэмтэл, хүсэлтийн тайлбар', $ticket->description, 'Хүсэлт гүйцэтгэх']);
 
         $this->actingAs($engineer)->put("/tickets/{$ticket->id}/close", ['resolution' => ''])
             ->assertSessionHasErrors('resolution');
@@ -366,7 +649,7 @@ class TicketTest extends TestCase
         // Хаасны дараа дахин өөрчлөх, хуваарилах боломжгүй
         $this->actingAs($engineer)->get("/tickets/{$ticket->id}")
             ->assertSee('Шийдвэрлэгдэж хаагдсан')
-            ->assertDontSee('Дуудлагыг гүйцэтгэх');
+            ->assertDontSee('Хүсэлт гүйцэтгэх');
         $this->actingAs($engineer)->put("/tickets/{$ticket->id}/postpone", [
             'postponed_until' => now()->addDay()->format('Y-m-d\TH:i'), 'reason' => 'x',
         ])->assertForbidden();
@@ -417,7 +700,7 @@ class TicketTest extends TestCase
 
         $this->actingAs($reporter)->put("/tickets/{$ticket->id}/close", ['resolution' => 'x'])->assertForbidden();
         $this->actingAs($otherEngineer)->put("/tickets/{$ticket->id}/close", ['resolution' => 'x'])->assertForbidden();
-        $this->actingAs($reporter)->get("/tickets/{$ticket->id}")->assertDontSee('Дуудлагыг гүйцэтгэх');
+        $this->actingAs($reporter)->get("/tickets/{$ticket->id}")->assertDontSee('Хүсэлт гүйцэтгэх');
 
         $this->actingAs(User::factory()->admin()->create())
             ->put("/tickets/{$ticket->id}/close", ['resolution' => 'Админ хаав.'])

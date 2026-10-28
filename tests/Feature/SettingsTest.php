@@ -21,6 +21,28 @@ class SettingsTest extends TestCase
         return User::factory()->admin()->create();
     }
 
+    public function test_topbar_shows_user_department(): void
+    {
+        $department = Department::create(['name' => 'Мэдээллийн технологийн төв']);
+        $user = User::factory()->create(['name' => 'Мөнхбат', 'department_id' => $department->id]);
+
+        $this->actingAs($user)->get('/dashboard')
+            ->assertSeeInOrder(['class="topbar-user"', 'Мөнхбат', '<small>Мэдээллийн технологийн төв</small>'], false);
+
+        // Алба, хэлтэсгүй хэрэглэгчид хоосон мөр гарахгүй
+        $this->actingAs($this->admin())->get('/admin')->assertDontSee('<small></small>', false);
+    }
+
+    public function test_finance_section_is_removed(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->get('/admin')->assertOk()->assertDontSee('/finance/', false);
+        foreach (['/finance', '/finance/salary', '/finance/trial-balance', '/finance/t-conclusion'] as $url) {
+            $this->actingAs($admin)->get($url)->assertNotFound();
+        }
+    }
+
     public function test_admin_sees_settings_submenu(): void
     {
         $this->actingAs($this->admin())->get('/admin')

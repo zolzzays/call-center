@@ -7,6 +7,7 @@ use App\Models\RepairType;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class RepairCategoryController extends LookupController
@@ -48,12 +49,17 @@ class RepairCategoryController extends LookupController
                 'placeholder' => '— Оноогоогүй —',
                 'display' => 'assignee.name',
                 'hint' => 'Энэ систем, төхөөрөмжийн дуудлага сонгосон гүйцэтгэгчид автоматаар хуваарилагдаж, мэйлээр мэдэгдэнэ.',
-                'options' => fn (?Model $item) => User::assignees($item?->assignee_id)
-                    ->orderBy('name')
-                    ->get(['id', 'name', 'email', 'is_active'])
-                    ->mapWithKeys(fn (User $u) => [$u->id => $u->name
-                        .($u->email ? '' : ' (и-мэйлгүй)')
-                        .($u->is_active ? '' : ' (идэвхгүй)')]),
+                'options' => fn (?Model $item) => $this->assigneeOptions($item?->assignee_id),
+            ],
+            'co_assignee_id' => [
+                'label' => 'Хамтран гүйцэтгэгч',
+                'type' => 'select',
+                'list' => true,
+                'required' => false,
+                'placeholder' => '— Оноогоогүй —',
+                'display' => 'coAssignee.name',
+                'hint' => 'Сонговол дуудлага хоёр гүйцэтгэгчид хамт хуваарилагдаж, хоёуланд нь мэйл очно. Аль нь ч хааж, хойшлуулж болно.',
+                'options' => fn (?Model $item) => $this->assigneeOptions($item?->co_assignee_id),
             ],
             'description' => ['label' => 'Тайлбар', 'type' => 'textarea', 'list' => true],
             'is_active' => ['label' => 'Идэвхтэй', 'type' => 'checkbox', 'list' => true],
@@ -74,12 +80,40 @@ class RepairCategoryController extends LookupController
                 'nullable', 'integer',
                 Rule::in(User::assignees($item?->assignee_id)->pluck('id')->all()),
             ],
+            'co_assignee_id' => [
+                'nullable', 'integer', 'different:assignee_id',
+                Rule::in(User::assignees($item?->co_assignee_id)->pluck('id')->all()),
+            ],
             'description' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
     protected function query(): Builder
     {
-        return RepairCategory::with(['repairType', 'assignee']);
+        return RepairCategory::with(['repairType', 'assignee', 'coAssignee']);
+    }
+
+    protected function deleteBlockedReason(Model $item): ?string
+    {
+        return $item->modules()->exists()
+            ? 'Энэ системд модуль бүртгэлтэй тул устгах боломжгүй. Идэвхгүй болгож болно.'
+            : null;
+    }
+
+    protected function messages(): array
+    {
+        return parent::messages() + [
+            'co_assignee_id.different' => 'Хамтран гүйцэтгэгч үндсэн гүйцэтгэгчээс өөр байна.',
+        ];
+    }
+
+    private function assigneeOptions(?int $currentId): Collection
+    {
+        return User::assignees($currentId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'is_active'])
+            ->mapWithKeys(fn (User $u) => [$u->id => $u->name
+                .($u->email ? '' : ' (и-мэйлгүй)')
+                .($u->is_active ? '' : ' (идэвхгүй)')]);
     }
 }

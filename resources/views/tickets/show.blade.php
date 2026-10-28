@@ -26,6 +26,7 @@
     .pill-new { color: #2f6fb0; }
     .pill-assigned { color: #6d5bd0; }
     .pill-postponed { color: #b7791f; }
+    .pill-returned { color: #c2410c; }
     .pill-closed { color: var(--excel); }
 
     .ticket-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; margin-top: 20px; }
@@ -35,6 +36,7 @@
     .panel .card-title { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 13px; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: .05em; }
     .card-title .count { font-size: 11px; background: #e8f0fe; color: var(--primary); padding: 2px 8px; border-radius: 999px; letter-spacing: 0; }
 
+    .desc-card { margin-bottom: 20px; }
     .description { white-space: pre-wrap; word-break: break-word; font-size: 15px; line-height: 1.7; color: var(--text); }
 
     .attachments { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
@@ -90,10 +92,14 @@
     .banner .banner-text { white-space: pre-wrap; word-break: break-word; margin-top: 10px; font-size: 14px; line-height: 1.6; color: var(--text); }
     .banner-closed { background: #f0faf4; border-color: #bfe3cd; color: var(--excel); }
     .banner-postponed { background: #fffaeb; border-color: #f5dfa0; color: #a16207; }
+    .banner-returned { background: #fff4ed; border-color: #fbcfb0; color: #c2410c; }
+    .banner > div { flex: 1; min-width: 0; }
+    .resubmit { margin-top: 14px; }
+    .resubmit .field { margin-bottom: 10px; }
 
     .work-card { border-color: #d6e1ef; margin-bottom: 20px; }
     .work-card > p { font-size: 13px; margin: -6px 0 16px; }
-    .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; background: #eef2f7; border-radius: 10px; margin-bottom: 16px; }
+    .seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; padding: 4px; background: #eef2f7; border-radius: 10px; margin-bottom: 16px; }
     .seg button {
         display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; border: 0; border-radius: 8px;
         background: transparent; font: inherit; font-size: 14px; font-weight: 700; color: var(--muted); cursor: pointer;
@@ -101,12 +107,15 @@
     .seg button[aria-selected=true] { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(16, 38, 66, .12); }
     .seg button[data-tab=close][aria-selected=true] { color: var(--excel); }
     .seg button[data-tab=postpone][aria-selected=true] { color: #a16207; }
+    .seg button[data-tab=return][aria-selected=true] { color: #c2410c; }
     .work-pane[hidden] { display: none; }
     .work-pane .form-actions { margin-top: 4px; }
     .btn-success { background: var(--excel); }
     .btn-success:hover { background: #0c6434; }
     .btn-warn { background: #b45309; }
     .btn-warn:hover { background: #92400e; }
+    .btn-return { background: #c2410c; }
+    .btn-return:hover { background: #9a3412; }
 
     .timeline { list-style: none; margin: 0; padding: 0; }
     .timeline li { position: relative; padding: 0 0 18px 30px; font-size: 13px; color: var(--muted); }
@@ -119,6 +128,8 @@
     .timeline li.pending::before { border-color: #cfd8e3; background: #fff; }
     .timeline li.t-postponed { --dot: #d97706; }
     .timeline li.t-closed { --dot: var(--excel); }
+    .timeline li.t-returned { --dot: #ea580c; }
+    .timeline li.t-resubmitted { --dot: var(--primary); }
     .timeline strong { display: block; color: var(--navy); font-size: 14px; }
     .timeline li.pending strong { color: #8a94a3; font-weight: 600; }
     .timeline .t-note { margin-top: 6px; padding: 8px 10px; background: #f5f7fa; border-radius: 8px; color: var(--text); white-space: pre-wrap; word-break: break-word; }
@@ -155,9 +166,13 @@
 <div class="panel ticket-head u-{{ $ticket->urgency }}">
     <div class="head-row">
         <div>
-            <div class="eyebrow">{{ $ticket->typeLabel() }}</div>
+            <div class="eyebrow">Хүсэлтийн дугаар</div>
             <h1 class="ticket-no">№{{ $ticket->number }}</h1>
             <div class="head-meta">
+                <span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                    {{ $ticket->typeLabel() }}
+                </span>
                 <span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><path d="M7 7h.01"/></svg>
                     {{ $ticket->repairType?->name ?? '—' }}@if ($ticket->repairCategory) / {{ $ticket->repairCategory->name }}@endif
@@ -177,6 +192,12 @@
 
 <div class="ticket-grid">
     <div class="main-col">
+        {{-- Хүсэлтийн дугаарын шууд доор тайлбарыг гаргана --}}
+        <div class="panel desc-card">
+            <h3 class="card-title">Гэмтэл, хүсэлтийн тайлбар</h3>
+            <div class="description">{{ $ticket->description }}</div>
+        </div>
+
         @php $lastPostpone = $ticket->activities->where('action', 'postponed')->last(); @endphp
         @if ($ticket->isClosed())
             @php $closer = $ticket->activities->where('action', 'closed')->last()?->user; @endphp
@@ -200,15 +221,48 @@
                     @if ($lastPostpone?->note) <div class="banner-text">{{ $lastPostpone->note }}</div> @endif
                 </div>
             </div>
+        @elseif ($ticket->isReturned())
+            @php $lastReturn = $ticket->activities->where('action', 'returned')->last(); @endphp
+            <div class="banner banner-returned" role="status">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+                <div>
+                    <strong>{{ $ticket->canBeResubmittedBy($me) ? 'Тодруулга авахаар танд буцаасан' : 'Буцаасан' }}</strong>
+                    <div class="banner-meta">
+                        @unless ($ticket->canBeResubmittedBy($me)) Илгээгчид буцаасан · илгээгчийн тодруулгыг хүлээж байна · @endunless
+                        {{ $lastReturn?->created_at?->format('Y-m-d H:i') }}@if ($lastReturn?->user) · {{ $lastReturn->user->name }}@endif
+                    </div>
+                    @if ($lastReturn?->note) <div class="banner-text">{{ $lastReturn->note }}</div> @endif
+
+                    @if ($ticket->canBeResubmittedBy($me))
+                        <form method="POST" action="{{ route('tickets.resubmit', $ticket) }}" class="resubmit">
+                            @csrf
+                            @method('PUT')
+                            <div class="field">
+                                <label for="clarification">Тодруулга <span class="req">*</span></label>
+                                <textarea id="clarification" name="clarification" class="input" rows="3" maxlength="5000" required
+                                          placeholder="Гүйцэтгэгчийн асуусан мэдээллийг бичнэ үү.">{{ old('clarification') }}</textarea>
+                                @error('clarification') <div class="error">{{ $message }}</div> @enderror
+                            </div>
+                            <button type="submit" class="btn">Дахин илгээх</button>
+                        </form>
+                    @endif
+                </div>
+            </div>
         @endif
+
 
         @if ($ticket->canBeWorkedBy($me))
             @php
-                $openTab = $errors->hasAny(['postponed_until', 'reason']) ? 'postpone' : 'close';
+                $openTab = match (true) {
+                    $errors->hasAny(['postponed_until', 'reason']) => 'postpone',
+                    $errors->has('return_reason') => 'return',
+                    default => 'close',
+                };
+                $canReturn = ! $ticket->isReturned();
             @endphp
             <div class="panel work-card">
-                <h3 class="card-title">Дуудлагыг гүйцэтгэх</h3>
-                <p>Ажлаа дуусгасан бол хааж, одоо хийх боломжгүй бол шинэ хугацаатай хойшлуулна уу. Илгээгчид мэйлээр мэдэгдэнэ.</p>
+                <h3 class="card-title">Хүсэлт гүйцэтгэх</h3>
+                <p>Ажлаа дуусгасан бол хааж, одоо хийх боломжгүй бол шинэ хугацаатай хойшлуулна уу. Мэдээлэл дутуу бол илгээгчид тодруулга авахаар буцаана. Илгээгчид мэйлээр мэдэгдэнэ.</p>
                 <div class="seg" role="tablist">
                     <button type="button" role="tab" data-tab="close" aria-selected="{{ $openTab === 'close' ? 'true' : 'false' }}" aria-controls="pane-close">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
@@ -218,6 +272,12 @@
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                         Хойшлуулах
                     </button>
+                    @if ($canReturn)
+                        <button type="button" role="tab" data-tab="return" aria-selected="{{ $openTab === 'return' ? 'true' : 'false' }}" aria-controls="pane-return">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+                            Буцаах
+                        </button>
+                    @endif
                 </div>
 
                 <form method="POST" action="{{ route('tickets.close', $ticket) }}" class="work-pane" id="pane-close" role="tabpanel" data-confirm="Дуудлагыг хаах уу? Хаасны дараа дахин өөрчлөх боломжгүй." @if ($openTab !== 'close') hidden @endif>
@@ -230,7 +290,7 @@
                         @error('resolution') <div class="error">{{ $message }}</div> @enderror
                     </div>
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-success">Шийдвэрлэж хаах</button>
+                        <button type="submit" class="btn btn-success">Хаах</button>
                     </div>
                 </form>
 
@@ -255,13 +315,25 @@
                         <button type="submit" class="btn btn-warn">Хойшлуулах</button>
                     </div>
                 </form>
+
+                @if ($canReturn)
+                    <form method="POST" action="{{ route('tickets.return', $ticket) }}" class="work-pane" id="pane-return" role="tabpanel" @if ($openTab !== 'return') hidden @endif>
+                        @csrf
+                        @method('PUT')
+                        <div class="field">
+                            <label for="return_reason">Буцаах шалтгаан <span class="req">*</span></label>
+                            <textarea id="return_reason" name="return_reason" class="input" rows="3" maxlength="2000" required
+                                      placeholder="Жишээ: Аль компьютер дээр алдаа гарч байгааг, алдааны зургийг хавсаргана уу.">{{ old('return_reason') }}</textarea>
+                            <div class="field-hint">Хүсэлт илгээгчид буцаж, тодруулж дахин илгээхэд танд мэйл очно.</div>
+                            @error('return_reason') <div class="error">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-return">Буцаах</button>
+                        </div>
+                    </form>
+                @endif
             </div>
         @endif
-
-        <div class="panel">
-            <h3 class="card-title">Гэмтэл, хүсэлтийн тайлбар</h3>
-            <div class="description">{{ $ticket->description }}</div>
-        </div>
 
         <div class="panel">
             <h3 class="card-title">Хавсралт <span class="count">{{ $ticket->attachments->count() }}</span></h3>
@@ -303,17 +375,16 @@
                     <dt>Систем, төхөөрөмж</dt>
                     <dd>{{ $ticket->repairCategory?->name ?? '—' }}</dd>
                 </div>
-                <div>
-                    <dt>Хүссэн хугацаа</dt>
-                    <dd>
-                        @if ($due)
+                {{-- Хүссэн хугацааг маягтаас хассан; өмнө нь бөглөсөн хүсэлтэд л харагдана --}}
+                @if ($due)
+                    <div>
+                        <dt>Хүссэн хугацаа</dt>
+                        <dd>
                             <span class="{{ $dueClass }}">{{ $due->format('Y-m-d H:i') }}</span>
                             <span class="sub">{{ $due->isPast() ? 'Хугацаа хэтэрсэн' : str_replace('одоогоос ', '', $due->locale('mn')->diffForHumans(['parts' => 1])) }}</span>
-                        @else
-                            <span class="muted">Заагаагүй</span>
-                        @endif
-                    </dd>
-                </div>
+                        </dd>
+                    </div>
+                @endif
                 <hr>
                 <div>
                     <dt>Илгээгч</dt>
@@ -329,10 +400,15 @@
                     <dt>Гүйцэтгэгч</dt>
                     <dd class="person">
                         @if ($ticket->assignee)
-                            <span class="avatar" style="background: {{ $color($ticket->assignee_id) }}" aria-hidden="true">{{ $initials($ticket->assignee->name) }}</span>
+                            @php $shown = $ticket->handler ?? $ticket->assignee; @endphp
+                            <span class="avatar" style="background: {{ $color($shown->id) }}" aria-hidden="true">{{ $initials($shown->name) }}</span>
                             <span>
-                                {{ $ticket->assignee->name }}
+                                {{ $ticket->assigneeDisplay() }}
                                 <span class="sub">{{ $ticket->assigned_at?->format('Y-m-d H:i') }}-д хуваарилсан</span>
+                                {{-- Хамтран гүйцэтгэгчтэй үед хэнд хуваарилагдсаныг бас харуулна --}}
+                                @if ($ticket->handler && $ticket->co_assignee_id)
+                                    <span class="sub">Хуваарилсан: {{ $ticket->assigneeNames() }}</span>
+                                @endif
                             </span>
                         @else
                             <span class="avatar empty" aria-hidden="true">?</span>
@@ -348,7 +424,7 @@
                 @csrf
                 @method('PUT')
                 <h3 class="card-title">{{ $ticket->assignee ? 'Гүйцэтгэгч солих' : 'Гүйцэтгэгчид хуваарилах' }}</h3>
-                <p>Сонгосон гүйцэтгэгч энэ дуудлагыг «Ирсэн хүсэлт» хэсгээсээ харна.</p>
+                <p>Сонгосон гүйцэтгэгч (хамтран гүйцэтгэгчийн хамт) энэ дуудлагыг «Ирсэн хүсэлт» хэсгээсээ харна.</p>
                 @if ($assignees->isEmpty())
                     <div class="field-hint">Идэвхтэй гүйцэтгэгч алга. «Тохиргоо → Хэрэглэгч» хэсэгт «Гүйцэтгэгч» эрхтэй хэрэглэгч нэмнэ үү.</div>
                 @else
@@ -360,9 +436,18 @@
                             </option>
                         @endforeach
                     </select>
+                    <select name="co_assignee_id" class="input" aria-label="Хамтран гүйцэтгэгч">
+                        <option value="">— Хамтран гүйцэтгэгчгүй —</option>
+                        @foreach ($assignees as $assignee)
+                            <option value="{{ $assignee->id }}" @selected(old('co_assignee_id', $ticket->co_assignee_id) == $assignee->id)>
+                                {{ $assignee->name }}{{ $assignee->department ? ' — '.$assignee->department->name : '' }}{{ $assignee->is_active ? '' : ' (идэвхгүй)' }}
+                            </option>
+                        @endforeach
+                    </select>
                     <button type="submit" class="btn">{{ $ticket->assignee ? 'Солих' : 'Хуваарилах' }}</button>
                 @endif
                 @error('assignee_id') <div class="error">{{ $message }}</div> @enderror
+                @error('co_assignee_id') <div class="error">{{ $message }}</div> @enderror
             </form>
         @endif
 
@@ -390,8 +475,13 @@
                 @endif
                 @unless ($ticket->isClosed())
                     <li class="pending">
-                        <strong>{{ $ticket->assignee_id ? 'Шийдвэрлэх' : 'Гүйцэтгэгчид хуваарилах' }}</strong>
-                        Хүлээгдэж байна
+                        @if ($ticket->isReturned())
+                            <strong>Буцаасан</strong>
+                            Илгээгчийн тодруулгыг хүлээж байна
+                        @else
+                            <strong>{{ $ticket->assignee_id ? 'Шийдвэрлэх' : 'Гүйцэтгэгчид хуваарилах' }}</strong>
+                            Хүлээгдэж байна
+                        @endif
                     </li>
                 @endunless
             </ol>
